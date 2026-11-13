@@ -1,0 +1,11 @@
+.venv/
+.env
+data/
+__pycache__/
+*.pyc
+# Real assets are provided separately and never committed; only config + README live in git.
+assets/**/*.mp4
+assets/*.mp3
+assets/*.ttf
+assets/logos/
+assets/logo_positions.json

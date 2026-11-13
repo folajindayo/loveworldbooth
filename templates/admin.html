@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <strong>LoveWorld Moment</strong>
+  <a href="/capture">Capture</a>
+  <a href="/qc">QC</a>
+  <a href="/admin" class="active">Admin</a>
+  <form method="post" action="/logout"><button class="linkbtn">Log out</button></form>
+</nav>
+<main class="wrap">
+  <h1>Admin</h1>
+  <p class="muted">Mock mode: {{mock}} · Wan slots: {{wan_slots}} · ffmpeg slots: {{ffmpeg_slots}}</p>
+  <h2>Jobs by status</h2>
+  <table id="statuses"></table>
+  <h2 style="margin-top:20px">Pipeline</h2>
+  <table id="pipeline"></table>
+</main>
+<script>
+const ORDER = ["queued", "processing", "stitching", "ready_for_qc", "approved", "rejected", "failed"];
+function rows(table, pairs) {
+  table.replaceChildren(...pairs.map(([k, v]) => {
+    const tr = document.createElement("tr");
+    const a = document.createElement("td"); a.textContent = k;
+    const b = document.createElement("td"); b.className = "n"; b.textContent = v ?? "–";
+    tr.append(a, b); return tr;
+  }));
+}
+function show(s) {
+  rows(document.getElementById("statuses"), ORDER.map((k) => [k, s.jobs_by_status[k] || 0]));
+  const approved = s.jobs_by_status.approved || 0;
+  rows(document.getElementById("pipeline"), [
+    ["Wan clips sent (incl. retries)", s.clips_sent],
+    ["Wan clip failures", s.clip_failures],
+    ["Stitch failures", s.stitch_failures],
+    ["Operator reruns", s.reruns],
+    ["Approved on first run", approved ? `${s.first_run_approvals} / ${approved} (${Math.round(100 * s.first_run_approvals / approved)}%)` : "–"],
+    ["Photo → ready, median min", s.minutes_to_ready.median],
+    ["Photo → ready, max min", s.minutes_to_ready.max],
+    ["Jobs running now", s.running_jobs],
+  ]);
+}
+show({{stats_json}});
+setInterval(async () => {
+  const res = await fetch("/admin/stats");
+  if (res.status === 401) location.href = "/login?next=/admin";
+  else if (res.ok) show(await res.json());
+}, 10000);
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QC</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <strong>LoveWorld Moment</strong>
+  <a href="/capture">Capture</a>
+  <a href="/qc" class="active">QC</a>
+  <a href="/admin">Admin</a>
+  <form method="post" action="/logout"><button class="linkbtn">Log out</button></form>
+</nav>
+
+<main class="wrap wide">
+  <div class="filters" id="filters">
+    <button data-f="all" class="on">All</button>
+    <button data-f="processing">Processing</button>
+    <button data-f="ready_for_qc">Ready for QC</button>
+    <button data-f="approved">Approved</button>
+    <button data-f="failed">Failed</button>
+    <button data-f="rejected">Rejected</button>
+  </div>
+  <div id="error" class="error" role="alert"></div>
+  <div class="grid" id="grid"></div>
+  <p id="empty" class="muted hidden">No jobs here yet.</p>
+</main>
+
+<div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <h2 id="modal-title"></h2>
+    <p class="muted">Visitor scans this to open their video</p>
+    <img id="modal-qr" alt="QR code for the visitor's video">
+    <p class="url" id="modal-url"></p>
+    <button class="primary" id="modal-close">Done</button>
+  </div>
+</div>
+
+<script src="/static/qc.js"></script>
+</body>
+</html>

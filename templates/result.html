@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Honouring {{name}} · LoveWorld Moment</title>
+<meta property="og:title" content="Honouring {{name}}">
+<meta property="og:description" content="A LoveWorld Expo Moment">
+<meta property="og:image" content="{{base_url}}/poster/{{token}}.jpg">
+<meta property="og:type" content="video.other">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="result">
+<main class="wrap">
+  <div class="eyebrow">LoveWorld Expo</div>
+  <h1>Honouring {{name}}</h1>
+  <video src="/media/{{token}}.mp4" poster="/poster/{{token}}.jpg" controls playsinline preload="metadata"></video>
+  <div class="buttons">
+    <a class="button" href="/media/{{token}}.mp4?download=1" download>Download</a>
+    <button class="button secondary" id="share" type="button">Share</button>
+  </div>
+  <p class="note" id="note" role="status"></p>
+  <footer>A LoveWorld Expo Moment</footer>
+</main>
+<script>
+const url = "{{url}}";
+document.getElementById("share").addEventListener("click", async () => {
+  const note = document.getElementById("note");
+  if (navigator.share) {
+    try { await navigator.share({ title: "My LoveWorld Moment", url }); return; }
+    catch (e) { if (e.name === "AbortError") return; }
+  }
+  try { await navigator.clipboard.writeText(url); note.textContent = "Link copied."; }
+  catch (_) { note.textContent = url; }
+});
+</script>
+</body>
+</html>

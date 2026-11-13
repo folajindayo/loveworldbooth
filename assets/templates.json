@@ -1,0 +1,4 @@
+[
+  {"id": "men", "label": "Men", "folder": "templates/men"},
+  {"id": "women", "label": "Women", "folder": "templates/women"}
+]

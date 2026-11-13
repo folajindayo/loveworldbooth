@@ -1,0 +1,22 @@
+# /etc/systemd/system/loveworld-moment.service
+# One process only: the job worker, semaphores and SQLite connection live inside it.
+# Never add --workers.
+[Unit]
+Description=LoveWorld Moment
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=lwm
+Group=lwm
+WorkingDirectory=/opt/loveworld-moment
+ExecStart=/opt/loveworld-moment/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-server-header
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

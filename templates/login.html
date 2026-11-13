@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operator login</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="wrap">
+  <h1>Operator login</h1>
+  <form method="post" action="/login">
+    <input type="hidden" name="next" value="{{next}}">
+    <label for="pin">PIN</label>
+    <input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="current-password" autofocus required>
+    <div class="error">{{error}}</div>
+    <button class="primary" type="submit">Log in</button>
+  </form>
+</main>
+</body>
+</html>

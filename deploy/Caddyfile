@@ -1,0 +1,7 @@
+# /etc/caddy/Caddyfile — replace the hostname; Caddy gets the HTTPS certificate automatically.
+moment.example.com {
+	request_body {
+		max_size 20MB
+	}
+	reverse_proxy 127.0.0.1:8000
+}
