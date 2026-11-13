@@ -1,0 +1,127 @@
+/* Public pages (landing, result, not found). Operator pages use style.css. */
+:root {
+  --ink: #07080f;
+  --ink-2: #0e1122;
+  --cream: #f6efe2;
+  --muted: #a9a294;
+  --gold: #e3b45c;
+  --gold-2: #f6d68f;
+  --gold-deep: #9c6f22;
+  --line: rgba(246, 214, 143, 0.22);
+  --glass: rgba(14, 17, 34, 0.55);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --serif: "Instrument Serif", "Times New Roman", serif;
+  --sans: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--ink); color: var(--cream); }
+body {
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100svh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(120% 70% at 50% -10%, #1a1f45 0%, transparent 60%),
+    radial-gradient(90% 60% at 50% 110%, #2a1b08 0%, transparent 60%),
+    var(--ink);
+}
+#scene { position: fixed; inset: 0; width: 100vw; height: 100svh; z-index: 0; pointer-events: none;
+  opacity: 0; transition: opacity 1.6s var(--ease); }
+.scene-ready #scene { opacity: 1; }
+body.playing #scene { opacity: 0.25; }
+.grain { position: fixed; inset: -50%; z-index: 1; pointer-events: none; opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 1.2s steps(3) infinite; }
+@keyframes grain { 50% { transform: translate(-3%, 2%); } 100% { transform: translate(2%, -3%); } }
+
+.wrap { position: relative; z-index: 2; width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+.bar { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; }
+.bar img { height: 46px; width: auto; display: block; }
+.bar .tag { font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); }
+
+.eyebrow { font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+.display { font-family: var(--serif); font-weight: 400; line-height: 0.92; letter-spacing: -0.01em; margin: 0; }
+.display em { font-style: italic; color: var(--gold-2); }
+
+/* Letter-by-letter reveal for the name / headline */
+.reveal .ch { display: inline-block; opacity: 0; transform: translateY(0.6em) rotate(6deg); filter: blur(8px);
+  animation: rise 1s var(--ease) forwards; animation-delay: calc(0.45s + var(--i) * 0.045s); }
+.reveal .sp { display: inline-block; width: 0.26em; }
+.reveal .word { display: inline-block; white-space: nowrap; }
+@keyframes rise { to { opacity: 1; transform: none; filter: none; } }
+.fade-up { opacity: 0; transform: translateY(18px); animation: fadeup 1s var(--ease) forwards; animation-delay: var(--d, 0.2s); }
+@keyframes fadeup { to { opacity: 1; transform: none; } }
+
+/* ---------- result page ---------- */
+.result { display: grid; gap: 28px; padding: 8px 0 40px; }
+.result .hello { text-align: center; }
+.result .honouring { font-family: var(--serif); font-style: italic; color: var(--gold-2); font-size: clamp(30px, 7vw, 56px); margin: 14px 0 0; }
+.result .name { font-size: clamp(52px, 14vw, 132px); margin-top: 2px; word-break: break-word; color: var(--gold-2); }
+/* gradient per letter: background-clip:text on the parent doesn't reach transformed inline-block children */
+.result .name .ch { background: linear-gradient(180deg, #fff9ec 0%, var(--gold-2) 55%, var(--gold) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: 0.06em; }
+.frame { position: relative; width: min(100%, 420px); margin: 0 auto; border-radius: 26px; padding: 8px;
+  background: linear-gradient(140deg, rgba(246, 214, 143, 0.55), rgba(156, 111, 34, 0.15) 40%, rgba(246, 214, 143, 0.4));
+  box-shadow: 0 40px 120px -30px rgba(227, 180, 92, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  transform-style: preserve-3d; transition: transform 0.6s var(--ease); }
+.frame video { display: block; width: 100%; aspect-ratio: 9 / 16; border-radius: 20px; background: #000; object-fit: cover; }
+.play { position: absolute; inset: 8px; display: grid; place-items: end center; padding-bottom: 9%; border: 0; border-radius: 20px; cursor: pointer;
+  background: linear-gradient(180deg, rgba(7, 8, 15, 0) 40%, rgba(7, 8, 15, 0.55)); color: var(--ink); transition: opacity 0.4s; }
+.play span { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff4d6, var(--gold) 60%, var(--gold-deep));
+  box-shadow: 0 10px 40px rgba(227, 180, 92, 0.55); animation: pulse 2.4s var(--ease) infinite; }
+.play svg { width: 28px; height: 28px; margin-left: 5px; }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+.frame.is-playing .play { opacity: 0; pointer-events: none; }
+
+.actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-width: 160px; padding: 17px 26px; border-radius: 999px; font: 700 15px/1 var(--sans); letter-spacing: 0.02em;
+  text-decoration: none; cursor: pointer; border: 0; transition: transform 0.35s var(--ease), box-shadow 0.35s; will-change: transform; }
+.btn svg { width: 18px; height: 18px; }
+.btn-gold { color: var(--ink); background: linear-gradient(180deg, var(--gold-2), var(--gold) 60%, #c4903a);
+  box-shadow: 0 12px 34px -10px rgba(227, 180, 92, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+.btn-glass { color: var(--cream); background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.btn:active { transform: scale(0.97); }
+.note { min-height: 20px; text-align: center; color: var(--muted); font-size: 14px; }
+.hint { text-align: center; color: var(--muted); font-size: 12px; letter-spacing: 0.08em; opacity: 0; transition: opacity 1s; }
+.scene-ready .hint { opacity: 1; }
+
+/* ---------- landing ---------- */
+.hero { min-height: calc(100svh - 82px); display: grid; align-content: center; gap: 26px; padding: 20px 0 60px; }
+.hero h1 { font-size: clamp(58px, 15vw, 168px); }
+.hero p.lede { max-width: 30ch; font-size: clamp(17px, 2.2vw, 21px); line-height: 1.5; color: #d9d1c1; margin: 0; }
+.steps { display: grid; gap: 14px; grid-template-columns: 1fr; padding: 20px 0 80px; }
+.step { padding: 26px 24px; border-radius: 22px; background: var(--glass); border: 1px solid var(--line);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.step .n { font-family: var(--serif); font-style: italic; color: var(--gold); font-size: 44px; line-height: 1; }
+.step h2 { font-family: var(--serif); font-weight: 400; font-size: 34px; margin: 10px 0 6px; }
+.step p { margin: 0; color: #cfc7b7; line-height: 1.55; }
+.scroll-cue { font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
+
+footer.site { position: relative; z-index: 2; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 26px 0 34px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; letter-spacing: 0.06em; }
+footer.site a { color: var(--muted); text-decoration: none; }
+
+@media (min-width: 900px) {
+  .result { grid-template-columns: 1.1fr 0.9fr; align-items: center; min-height: calc(100svh - 82px); gap: 40px; }
+  .result .hello { text-align: left; }
+  .result .actions, .result .note, .result .hint { justify-content: flex-start; text-align: left; }
+  .steps { grid-template-columns: repeat(3, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal .ch, .fade-up { animation: none; opacity: 1; transform: none; filter: none; }
+  .grain, .play span { animation: none; }
+}
+
+/* result layout: text, video, buttons stacked on phones; text+buttons beside the video on desktop */
+.result { grid-template-areas: "hello" "frame" "cta"; }
+.result .hello { grid-area: hello; }
+.result .frame { grid-area: frame; }
+.result .cta { grid-area: cta; display: grid; gap: 14px; }
+@media (min-width: 900px) {
+  .result { grid-template-areas: "hello frame" "cta frame"; align-content: center; }
+  .result .hello { align-self: end; }
+  .result .cta { align-self: start; }
+}

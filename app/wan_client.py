@@ -7,6 +7,7 @@ API (docs: wavespeed.ai/docs):
 Statuses: created | processing (running), completed (done), failed | cancelled | timeout | deleted (terminal failure).
 """
 import logging
+import mimetypes
 import shutil
 import time
 import uuid
@@ -57,7 +58,7 @@ class WanClient:
 
     async def upload(self, path: Path) -> str:
         """Upload a local file, return a URL the model can read."""
-        content_type = "video/mp4" if path.suffix == ".mp4" else "image/jpeg"
+        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         resp = await self.http.post(
             f"{self.base}/media/uploads",
             json={"filename": path.name, "size": path.stat().st_size, "content_type": content_type},
@@ -77,8 +78,12 @@ class WanClient:
                 "resolution": config.WAN_RESOLUTION, "seed": -1}
         if config.WAN_PROMPT:
             body["prompt"] = config.WAN_PROMPT
-        resp = await self.http.post(f"{self.base}/wavespeed-ai/wan-2.2/animate", json=body)
-        _check(resp, "submit")
+        return await self.submit_model("wavespeed-ai/wan-2.2/animate", body)
+
+    async def submit_model(self, model: str, body: dict) -> str:
+        """Submit any WaveSpeed model (e.g. 'kwaivgi/kling-v4.0/image-to-video'). Never retried: a retry can bill twice."""
+        resp = await self.http.post(f"{self.base}/{model}", json=body)
+        _check(resp, f"submit {model}")
         task_id = _data(resp).get("id")
         if not task_id:
             raise WanError(f"submit: no task id in response {resp.text[:300]}")

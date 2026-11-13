@@ -136,7 +136,10 @@ class Worker:
             if result.status == "completed":
                 try:
                     db.update_clip(job_id, clip, output_url=result.outputs[0])
-                    await self.client.download(result.outputs[0], dest)
+                    raw = dest.with_name(f"{clip}.wan.mp4")
+                    await self.client.download(result.outputs[0], raw)
+                    await fb.probe(raw)
+                    await self._finish_clip(job, clip, raw, dest)
                     await fb.probe(dest)
                     db.update_clip(job_id, clip, status="done", local_path=str(dest), error=None)
                     db.add_event(job_id, "wan_done", clip)
@@ -157,7 +160,7 @@ class Worker:
         template = config.load_templates()[job["template_id"]]
         try:
             image_url = await self._upload(Path(job["photo_path"]))
-            video_url = await self._upload(config.template_clip(template, clip))
+            video_url = await self._upload(await self._swap_input(template, clip))
             db.update_clip(job_id, clip, status="running", attempts=attempt, provider_task_id=None, error=None)
             task_id = await self.client.submit(image_url, video_url)
         except Exception as e:
@@ -193,6 +196,37 @@ class Worker:
                 return result
             await asyncio.sleep(poll_s)
         return TaskResult("failed", error=f"timed out after {config.WAN_TIMEOUT_S}s")
+
+    async def _swap_input(self, template: dict, clip: str) -> Path:
+        """The clip Wan sees: the template itself, or (for clips with a swap region) only the stand-in's region."""
+        src = config.template_clip(template, clip)
+        region = fb.swap_region(template, clip)
+        if not region:
+            return src
+        key = f"{template['id']}_{clip}_{region['x']}_{region['width']}_{src.stat().st_mtime_ns}"
+        out = config.DATA_DIR / "swap_inputs" / f"{key}.mp4"
+        if not out.exists():
+            out.parent.mkdir(parents=True, exist_ok=True)
+            tmp = out.with_suffix(".tmp.mp4")
+            async with self.ffmpeg_slots:
+                await fb.run(fb.swap_input_cmd(src, region, tmp))
+            tmp.replace(out)
+        return out
+
+    async def _finish_clip(self, job: dict, clip: str, raw: Path, dest: Path) -> None:
+        """Wan output -> the clip used in the stitch (blended back into the template if it has a swap region)."""
+        template = config.load_templates()[job["template_id"]]
+        region = fb.swap_region(template, clip)
+        if not region:
+            raw.replace(dest)
+            return
+        mask = config.DATA_DIR / "swap_inputs" / f"mask_{region['x']}_{region['width']}_{region.get('feather', 40)}.png"
+        if not mask.exists():
+            fb.region_mask(region, mask)
+        tmp = dest.with_suffix(".tmp.mp4")
+        async with self.ffmpeg_slots:
+            await fb.run(fb.composite_cmd(config.template_clip(template, clip), raw, mask, tmp), job["id"])
+        tmp.replace(dest)
 
     async def _upload(self, path: Path) -> str:
         """Upload once and reuse the URL (template clips are shared by every job)."""

@@ -87,6 +87,14 @@ def main() -> None:
         img.save(plaque)
         print("created", plaque)
 
+    branding = ASSETS / "branding.json"
+    if branding.exists():
+        corner = json.loads(branding.read_text()).get("corner_logo")
+        if corner and not (ASSETS / corner["file"]).exists():
+            (ASSETS / corner["file"]).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(logo, ASSETS / corner["file"])
+            print("created", ASSETS / corner["file"], "(placeholder)")
+
     positions = ASSETS / "logo_positions.json"
     if not positions.exists():
         positions.write_text(json.dumps(

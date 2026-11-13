@@ -68,6 +68,12 @@ def load_logo_positions(template_id: str) -> list[dict]:
     return json.loads(path.read_text()).get(template_id, [])
 
 
+def load_branding() -> dict:
+    """assets/branding.json: {"corner_logo": {file, x, y, width}} shown from clip A through the plaque."""
+    path = ASSETS_DIR / "branding.json"
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
 def validate() -> list[str]:
     """Return human-readable problems; the app refuses to start if any exist."""
     problems = []
@@ -83,6 +89,9 @@ def validate() -> list[str]:
         for key in ("image", "font"):
             if not (ASSETS_DIR / plaque[key]).exists():
                 problems.append(f"missing plaque {key}: {ASSETS_DIR / plaque[key]}")
+    corner = load_branding().get("corner_logo")
+    if corner and not (ASSETS_DIR / corner["file"]).exists():
+        problems.append(f"missing corner logo: {ASSETS_DIR / corner['file']}")
     if (ASSETS_DIR / "templates.json").exists():
         for tid, t in load_templates().items():
             for clip in CLIPS:

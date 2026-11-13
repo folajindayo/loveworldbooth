@@ -1,0 +1,58 @@
+{
+  "still_model": "google/nano-banana-2.1/edit",
+  "video_models": {
+    "kling": {
+      "model": "kwaivgi/kling-v4.0/image-to-video",
+      "usd_per_s": 0.157,
+      "body": {
+        "resolution": "720p",
+        "duration": 5,
+        "aspect_ratio": "9:16"
+      }
+    },
+    "seedance": {
+      "model": "bytedance/seedance-2.5/image-to-video",
+      "usd_per_s": 0.36,
+      "body": {
+        "resolution": "720p",
+        "duration": 5,
+        "generate_audio": false
+      }
+    }
+  },
+  "stand_ins": {
+    "men": "a Nigerian man in his early 30s, medium build, average height, short neat haircut, clean-shaven, wearing a plain well-fitted charcoal suit, white shirt, no tie, black shoes",
+    "women": "a Nigerian woman in her early 30s, medium build, average height, shoulder-length natural hair neatly styled, wearing a simple elegant knee-length emerald-green dress with short sleeves and low black heels"
+  },
+  "clips": {
+    "A": {
+      "refs": [
+        "raw/reference/expo_hall.png"
+      ],
+      "still_prompt": "Create a new photorealistic vertical 9:16 photograph. Scene: the LoveWorld Expo 2026 exhibition hall shown in reference image 1 - glossy white floor, curved white booths with blue LED light strips, crystal chandeliers, sparkling ceiling - with the background softly out of focus and nobody else near the subject. Subject: {stand_in}, standing alone in the centre of the frame, facing the camera, the whole body visible from head to feet with space above the head and below the feet, arms relaxed at the sides, confident warm smile. Eye-level camera, 35mm lens, static. Soft even key light on the face and body, natural skin texture, sharp focus. No text, no logos, no watermarks.",
+      "motion_prompt": "The person stands in place, shifts weight slightly, smiles at the camera, gives a small confident nod and a gentle wave with one hand, then lowers it. Background lights shimmer subtly. Static locked-off camera, no zoom, no camera movement. Realistic natural human motion."
+    },
+    "B": {
+      "identity_from": "A",
+      "refs": [
+        "raw/reference/stage_runway_2022_clean.png"
+      ],
+      "still_prompt": "Create a new photorealistic vertical 9:16 photograph. The person is exactly the same as in reference image 1 (identical face, hair, body and outfit). Scene: the award stage from reference image 2 - bright blue carpeted stage floor, gold geometric set pieces, stage lights, light haze. The person walks toward the camera down the middle of the blue stage, mid-stride, the whole body visible from head to feet, confident smile, arms swinging naturally. Thin low smoke at floor level, warm spotlights from behind. Eye-level camera in front of the person. Nobody else in the foreground. No text, no logos, no TV graphics, no watermarks.",
+      "motion_prompt": "The person walks confidently toward the camera with natural steps, arms swinging naturally, smiling. Stage lights sweep softly and light haze drifts at floor level. The camera dollies slowly backward to keep the whole body in frame. Realistic natural human motion."
+    },
+    "C": {
+      "identity_from": "A",
+      "refs": [
+        "raw/reference/award_handover_2022_clean.png",
+        "raw/pastor-chris/photo_2026-11-13_08-22-59.jpg",
+        "raw/pastor-chris/photo_2026-11-13_08-22-50.jpg",
+        "raw/pastor-chris/photo_2026-11-13_08-22-55.jpg",
+        "raw/pastor-chris/photo_2026-11-13_08-23-02.jpg",
+        "raw/award/photo_2026-11-13_08-13-27.jpg",
+        "raw/pastor-chris/face_closeup_brocade.jpg"
+      ],
+      "still_prompt": "Create a new photorealistic vertical 9:16 photograph of an award presentation on the stage shown in reference image 2 (gold set, warm stage light, soft haze). The only people in the image are these two. On the left, in the foreground, a step closer to the camera and clearly larger in the frame than Pastor Chris (the most prominent person in the photo): the same person as in reference image 1 (identical face, hair, body and outfit), whole body visible from head to feet, turned three-quarters toward the right, smiling, reaching out to shake hands. On the right, a step further back from the camera: Pastor Chris Oyakhilome with exactly the face in reference images 3 to 6 and 8, wearing the red doctoral gown with royal-blue panels and black velvet bars from reference images 3 to 6, smiling, shaking the person's hand with his right hand and holding out the crystal 'Certificate of Presence' plaque from reference image 7 with his left hand. The hand-over happens between them and does not cover either face. Eye-level camera. No text overlays, no TV graphics, no watermarks.",
+      "motion_prompt": "Pastor Chris hands the crystal plaque to the person while they shake hands; the person receives the plaque with both hands, smiles and turns slightly toward the camera holding it. Pastor Chris smiles and claps lightly. Natural realistic movement, faces stay stable, no morphing. Static camera with a very slight push-in."
+    }
+  }
+}

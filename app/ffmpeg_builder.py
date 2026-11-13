@@ -59,8 +59,10 @@ def _normalize(inp: int, seconds: int) -> str:
 def build_stitch_cmd(
     intro: Path, clip_a: Path, clip_b: Path, clip_c: Path, endcard: Path, music: Path,
     plaque_card: Path, plaque_focus: tuple[float, float], watermark: Path, logos: list[dict], out: Path,
+    corner_logo: dict | None = None,
 ) -> list[str]:
-    """logos: [{path, x, y, width}] overlaid on clip A. plaque_focus: nameplate centre in plaque_card pixels."""
+    """logos: [{path, x, y, width}] overlaid on clip A. plaque_focus: nameplate centre in plaque_card pixels.
+    corner_logo: {path, x, y, width} shown from the start of clip A to the end of the plaque."""
     hold_frames = HOLD_S * FPS
     fx, fy = plaque_focus
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
@@ -70,6 +72,8 @@ def build_stitch_cmd(
            "-i", str(watermark)]
     for logo in logos:
         cmd += ["-i", str(logo["path"])]
+    if corner_logo:
+        cmd += ["-i", str(corner_logo["path"])]
 
     f = [
         f"{_normalize(0, INTRO_S)}[intro]",
@@ -90,7 +94,8 @@ def build_stitch_cmd(
         "setsar=1,format=yuv420p,fade=t=in:st=0:d=0.35[hold]",
         f"[intro][{prev}][b][c][hold][end]concat=n=6:v=1:a=0[cat]",
         f"[cat]{GRADE},{GRAIN}[graded]",
-        "[graded][7:v]overlay=0:0,format=yuv420p[v]",
+        "[graded][7:v]overlay=0:0[marked]",
+        _corner(corner_logo, 8 + len(logos)),
         f"[5:a]atrim=0:{TOTAL_S},asetpts=PTS-STARTPTS,afade=t=out:st={TOTAL_S - 1}:d=1,"
         "aformat=sample_rates=48000:channel_layouts=stereo[aout]",
     ]
@@ -99,6 +104,63 @@ def build_stitch_cmd(
             "-pix_fmt", "yuv420p", "-r", str(FPS),
             "-c:a", "aac", "-b:a", "160k", "-t", str(TOTAL_S), "-movflags", "+faststart", str(out)]
     return cmd
+
+
+def swap_region(template: dict, clip: str) -> dict | None:
+    """templates.json "swap_regions": {"C": {"x", "width", "feather"}} for clips with a second person.
+
+    Wan's replace mode can't be told which person to swap; with two people in frame it may swap neither
+    (seen on clip C). So only the region holding the stand-in is sent to Wan, and the result is blended
+    back over the untouched template. Everyone outside the region (Pastor Chris) is never regenerated.
+    """
+    return (template.get("swap_regions") or {}).get(clip)
+
+
+def swap_input_cmd(src: Path, region: dict, out: Path) -> list[str]:
+    """The template with everything outside the region smeared into person-free colour streaks."""
+    x, w = int(region["x"]), int(region["width"])
+    right = W - x - w
+    fill = f"fillborders=left={x}:right={right}:mode=smear" if (x or right) else "null"
+    return ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(src),
+            "-vf", f"crop={w}:{H}:{x}:0,pad={W}:{H}:{x}:0,{fill},setsar=1",
+            "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p", str(out)]
+
+
+def region_mask(region: dict, out: Path) -> None:
+    """White inside the region, fading to black over `feather` px at edges that border the rest of the frame."""
+    x, w, f = int(region["x"]), int(region["width"]), int(region.get("feather", 40))
+    mask = Image.new("L", (W, H), 0)
+    for col in range(x, x + w):
+        v = 255
+        if x > 0 and col < x + f:
+            v = min(v, int(255 * (col - x) / f))
+        if x + w < W and col >= x + w - f:
+            v = min(v, int(255 * (x + w - col) / f))
+        mask.paste(v, (col, 0, col + 1, H))
+    mask.save(out)
+
+
+def composite_cmd(template_clip: Path, swapped: Path, mask: Path, out: Path) -> list[str]:
+    """Blend Wan's output into the template through the region mask (template pixels everywhere else)."""
+    return ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+            "-i", str(template_clip), "-i", str(swapped), "-loop", "1", "-i", str(mask),
+            "-filter_complex",
+            f"[0:v]scale={W}:{H},fps={FPS},setsar=1,format=yuv420p[t];"
+            f"[1:v]scale={W}:{H},fps={FPS},setsar=1,format=yuva420p[s];"
+            f"[2:v]scale={W}:{H},format=gray[m];[s][m]alphamerge[sa];"
+            "[t][sa]overlay=0:0:shortest=1,format=yuv420p[v]",
+            "-map", "[v]", "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p",
+            str(out)]
+
+
+def _corner(corner_logo: dict | None, index: int) -> str:
+    """Overlay the corner logo on clips A-C (the intro, plaque and end card show the brand already)."""
+    if not corner_logo:
+        return "[marked]format=yuv420p[v]"
+    start, end = INTRO_S, INTRO_S + 3 * CLIP_S  # A, B, C only: the plaque carries the logo itself
+    return (f"[{index}:v]scale={int(corner_logo['width'])}:-1,format=rgba[corner];"
+            f"[marked][corner]overlay=x={int(corner_logo['x'])}:y={int(corner_logo['y'])}"
+            f":enable='between(t,{start},{end})',format=yuv420p[v]")
 
 
 async def run(cmd: list[str], job_id: int | None = None) -> None:
@@ -147,6 +209,7 @@ async def stitch(job: dict, clip_paths: dict[str, Path], job_dir: Path) -> Path:
     cmd = build_stitch_cmd(
         a / "intro.mp4", clip_paths["A"], clip_paths["B"], clip_paths["C"], a / "endcard.mp4", a / "music.mp3",
         plaque_card, plaque_focus, watermark, logos, tmp,
+        corner_logo=({**corner, "path": a / corner["file"]} if (corner := config.load_branding().get("corner_logo")) else None),
     )
     await run(cmd, job["id"])
     # Poster = the "Honouring {name}" moment; shown before playback and as the link-preview image.

@@ -54,7 +54,7 @@ async def security_headers(request: Request, call_next):
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("Referrer-Policy", "no-referrer")
     resp.headers.setdefault("X-Frame-Options", "DENY")
-    if not request.url.path.startswith(("/static", "/media", "/qr", "/poster")):
+    if not request.url.path.startswith(("/static", "/media", "/qr", "/poster", "/brand")):
         resp.headers.setdefault("Cache-Control", "no-store")
     return resp
 
@@ -154,9 +154,21 @@ def _json_for_script(obj) -> str:
     return json.dumps(obj).replace("<", "\\u003c")
 
 
-@app.get("/")
-async def root():
-    return RedirectResponse("/capture", status_code=303)
+@app.get("/", response_class=HTMLResponse)
+async def landing():
+    return page("landing.html")
+
+
+BRAND_FILES = {"logo.png": "image/png", "medallion.jpg": "image/jpeg"}
+
+
+@app.get("/brand/{name}")
+async def brand(name: str):
+    """Public brand images for the site (built by scripts/make_brand.py into assets/brand/)."""
+    path = config.ASSETS_DIR / "brand" / name
+    if name not in BRAND_FILES or not path.exists():
+        raise HTTPException(404, "Not found")
+    return FileResponse(path, media_type=BRAND_FILES[name], headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/capture", response_class=HTMLResponse, dependencies=[Depends(operator_page)])
