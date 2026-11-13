@@ -121,11 +121,11 @@ function star() {
 // [x, y, z, scale] per object. The result page keeps the video column clear; the landing page frames the headline.
 const LAYOUTS = {
   landing: {
-    portrait: { medallion: [1.45, 3.05, 1, 0.62], plaque: [1.55, -3.55, -1, 0.75], globe: [-1.75, -3.2, -3, 0.62], s1: [-1.9, 2.6, -2, 0.22], s2: [2.3, 0.2, -5, 0.2], s3: [-2.2, -0.9, -6, 0.18] },
+    portrait: { medallion: [1.05, -2.45, 1, 0.78], plaque: [-1.55, -3.7, -1, 0.65], globe: [1.75, 4.55, -3, 0.45], s1: [-1.9, 3.3, -2, 0.2], s2: [2.3, -0.9, -5, 0.18], s3: [-2.2, -1.9, -6, 0.18] },
     landscape: { medallion: [4.6, 1.4, 0, 1.35], plaque: [-4.9, -1.2, -1, 1.15], globe: [-3.8, 2.6, -3, 0.9], s1: [3.6, -2.4, -2, 0.36], s2: [-1.4, 3.1, -4, 0.26], s3: [5.6, -0.4, -6, 0.24] },
   },
   result: {
-    portrait: { medallion: [1.7, 4.95, 1, 0.4], plaque: [1.9, -4.3, -2, 0.7], globe: [-2.0, -4.2, -3, 0.55], s1: [-2.1, 2.2, -2, 0.2], s2: [2.4, 0.6, -5, 0.2], s3: [-2.4, -1.4, -6, 0.18] },
+    portrait: { medallion: [1.45, 3.72, 1, 0.38], plaque: [1.9, -4.3, -2, 0.7], globe: [-2.0, -4.2, -3, 0.55], s1: [-2.2, 3.1, -2, 0.18], s2: [2.4, 0.6, -5, 0.2], s3: [-2.4, -1.4, -6, 0.18] },
     landscape: { medallion: [0.4, 2.9, -1, 0.95], plaque: [-5.2, -3.0, -2, 1.0], globe: [6.4, 3.0, -3, 0.8], s1: [0.6, -2.9, -2, 0.32], s2: [-1.6, 3.6, -5, 0.24], s3: [6.2, -2.6, -6, 0.24] },
   },
 };
@@ -224,7 +224,8 @@ function tick() {
   if (!running) return;
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
-  entrance = Math.min(1, entrance + dt / 1.8);
+  // by wall-clock time, not per frame: on a slow phone a per-frame entrance crawls and parks objects on the text
+  entrance = reduceMotion ? 1 : Math.min(1, t / 1.8);
   const ease = 1 - Math.pow(1 - entrance, 3);
   const scroll = scrollY / Math.max(innerHeight, 1);
 
