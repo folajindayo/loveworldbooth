@@ -203,8 +203,8 @@ class Worker:
         region = fb.swap_region(template, clip)
         if not region:
             return src
-        key = f"{template['id']}_{clip}_{region['x']}_{region['width']}_{src.stat().st_mtime_ns}"
-        out = config.DATA_DIR / "swap_inputs" / f"{key}.mp4"
+        key = f"{template['id']}_{region['x']}_{region['width']}_{src.stat().st_mtime_ns}"
+        out = config.DATA_DIR / "swap_inputs" / key / f"{clip}.mp4"   # file keeps the clip's name
         if not out.exists():
             out.parent.mkdir(parents=True, exist_ok=True)
             tmp = out.with_suffix(".tmp.mp4")

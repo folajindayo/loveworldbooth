@@ -10,6 +10,10 @@ The flow is still -> pick -> video -> pick, so nothing is animated until its sti
   python scripts/make_templates.py status                    # what's approved, money spent so far
   python scripts/make_templates.py still men A --dry-run     # print the request, spend nothing
 
+Continuous takes: a plan clip with "install_as": ["B", "C"] (e.g. "BC", the walk-to-award take) is
+generated as one long video (Kling start frame + "keyframes" + "last_image" taken from approved stills
+or the last frame of an approved video) and split into those template slots on install.
+
 Prompts and references live in template_studio/plan.json. Clips B and C reuse the approved A still as the
 identity reference, so the stand-in is the same person in all three clips. Every generation writes a
 .json next to its output (model, prompt, inputs, task id) and a line in raw/generated/ledger.jsonl.
@@ -84,10 +88,11 @@ async def generate(client: WanClient, model: str, body: dict, out: Path, meta: d
 async def cmd_still(args) -> None:
     clip = PLAN["clips"][args.clip]
     refs = []
-    if "identity_from" in clip:
-        identity = approved_still(args.template, clip["identity_from"])
+    sources = clip.get("identity_from", [])
+    for src in [sources] if isinstance(sources, str) else sources:
+        identity = approved_still(args.template, src)
         if not identity.exists():
-            sys.exit(f"Approve {args.template} {clip['identity_from']} first: it carries the stand-in's identity.")
+            sys.exit(f"Approve {args.template} {src} first: it carries the stand-in's identity / the scene.")
         refs.append(identity)
     refs += [ROOT / r for r in clip["refs"]]
     missing = [str(r) for r in refs if not r.exists()]
@@ -119,7 +124,12 @@ async def cmd_video(args) -> None:
     if not still.exists():
         sys.exit(f"Approve a still for {args.template} {args.clip} first.")
     spec = PLAN["video_models"][args.model]
-    body_extra = dict(spec["body"])
+    clip_video = PLAN["clips"][args.clip].get("video", {})
+    body_extra = {**spec["body"], **({"duration": clip_video["duration"]} if "duration" in clip_video else {})}
+    keyframes = [] if args.no_keyframes else clip_video.get("keyframes", [])
+    frames = {"keyframes": [resolve_frame(args.template, f) for f in keyframes]}
+    if clip_video.get("last_image"):
+        frames["last_image"] = resolve_frame(args.template, clip_video["last_image"])
     cost = spec["usd_per_s"] * body_extra.get("duration", 5) * args.n
     print(f"{args.template} {args.clip}: {args.n} video(s) on {args.model}, est ${cost:.2f}")
     if args.dry_run:
@@ -128,6 +138,10 @@ async def cmd_video(args) -> None:
     client = WanClient()
     try:
         body = {"image": await client.upload(still), "prompt": PLAN["clips"][args.clip]["motion_prompt"], **body_extra}
+        if frames["keyframes"]:
+            body["keyframes"] = [await client.upload(f) for f in frames["keyframes"]]
+        if "last_image" in frames:
+            body["last_image"] = await client.upload(frames["last_image"])
         folder = GEN / "videos"
         folder.mkdir(parents=True, exist_ok=True)
         stem = f"{args.template}_{args.clip}_{args.model}"
@@ -138,6 +152,23 @@ async def cmd_video(args) -> None:
                                for i in range(args.n)))
     finally:
         await client.close()
+
+
+def resolve_frame(template: str, ref: str) -> Path:
+    """'still:C' -> the approved C still; 'lastframe:C' -> the last frame of the approved C video."""
+    kind, clip = ref.split(":", 1)
+    if kind == "still":
+        path = approved_still(template, clip)
+    else:
+        video = APPROVED / f"{template}_{clip}.mp4"
+        if not video.exists():
+            sys.exit(f"Needs the approved {template} {clip} video for {ref}")
+        path = APPROVED / f"{template}_{clip}_lastframe.png"
+        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-sseof", "-0.2", "-i", str(video),
+                        "-frames:v", "1", "-update", "1", str(path)], check=True)
+    if not path.exists():
+        sys.exit(f"Missing {ref} for {template}: approve it first")
+    return path
 
 
 def cmd_pick(args) -> None:
@@ -154,15 +185,19 @@ def cmd_pick(args) -> None:
         sys.exit(f"Expected one video for index {args.index}, found {[m.name for m in matches]}. "
                  "Use the full number from the file name.")
     template = config.load_templates()[args.template]
-    dest = config.template_clip(template, args.clip)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    # Normalise to the template spec: 720x1280, 30 fps, exactly 5 s, H.264, no audio.
-    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(matches[0]),
-                    "-vf", "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=30",
-                    "-t", "5", "-an", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
-                    str(dest)], check=True)
+    slots = PLAN["clips"][args.clip].get("install_as", [args.clip])
+    for i, slot in enumerate(slots):
+        dest = config.template_clip(template, slot)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        # Normalise to the template spec: 720x1280, 30 fps, exactly 5 s, H.264, no audio.
+        # A continuous take fills several slots, 5 s each, cut back to back.
+        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(matches[0]),
+                        "-vf", f"trim=start={i * 5},setpts=PTS-STARTPTS,"
+                               "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=30",
+                        "-t", "5", "-an", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
+                        str(dest)], check=True)
+        print(f"installed {matches[0].name} [{i * 5}-{i * 5 + 5}s] -> {dest}")
     shutil.copyfile(matches[0], APPROVED / f"{args.template}_{args.clip}.mp4")
-    print(f"installed {matches[0].name} -> {dest}")
 
 
 def cmd_status(_args) -> None:
@@ -189,15 +224,17 @@ def main() -> None:
     for name in ("still", "video"):
         p = sub.add_parser(name)
         p.add_argument("template")
-        p.add_argument("clip", choices=config.CLIPS)
+        p.add_argument("clip", choices=list(PLAN["clips"]))
         p.add_argument("-n", type=int, default=2 if name == "still" else 1, help="candidates to generate")
         p.add_argument("--dry-run", action="store_true")
         if name == "video":
             p.add_argument("--model", default="kling", choices=list(PLAN["video_models"]))
+            p.add_argument("--no-keyframes", action="store_true",
+                           help="only start + last frame (use when the start still is framed differently from the keyframe)")
     p = sub.add_parser("pick")
     p.add_argument("kind", choices=["still", "video"])
     p.add_argument("template")
-    p.add_argument("clip", choices=config.CLIPS)
+    p.add_argument("clip", choices=list(PLAN["clips"]))
     p.add_argument("index", type=int)
     sub.add_parser("status")
     args = ap.parse_args()

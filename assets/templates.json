@@ -1,6 +1,6 @@
 [
   {"id": "men", "label": "Men", "folder": "templates/men",
-   "swap_regions": {"C": {"x": 0, "width": 384, "feather": 40}}},
+   "swap_regions": {"B": {"x": 0, "width": 384, "feather": 40}, "C": {"x": 0, "width": 384, "feather": 40}}},
   {"id": "women", "label": "Women", "folder": "templates/women",
-   "swap_regions": {"C": {"x": 0, "width": 384, "feather": 40}}}
+   "swap_regions": {"B": {"x": 0, "width": 384, "feather": 40}, "C": {"x": 0, "width": 384, "feather": 40}}}
 ]
