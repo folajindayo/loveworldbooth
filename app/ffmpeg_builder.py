@@ -1,6 +1,6 @@
 """Builds and runs the single ffmpeg command that assembles the final video.
 
-Text (name card, watermark) is rendered to transparent PNGs with Pillow and overlaid, so visitor
+Text (the engraved plaque, the watermark) is rendered with Pillow and fed in as images, so visitor
 names never pass through ffmpeg filter escaping and no freetype-enabled ffmpeg build is needed.
 """
 import asyncio
@@ -12,16 +12,17 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from . import config
+from . import config, plaque
 
 log = logging.getLogger("ffmpeg")
 
 W, H, FPS = 720, 1280, 30
-# (segment, seconds) — the timeline from the spec, in order.
+# (segment, seconds) in order: intro, clips A/B/C, plaque hold (the visitor's engraved name), end card.
 INTRO_S, CLIP_S, HOLD_S, END_S = 3, 5, 4, 3
 TOTAL_S = INTRO_S + 3 * CLIP_S + HOLD_S + END_S  # 25
 
 GRADE = "eq=contrast=1.06:saturation=1.10:brightness=0.01:gamma=0.98"
+PLAQUE_ZOOM = 0.6  # the hold eases from the whole plaque to 1.6x on the nameplate
 # Per-frame grain is incompressible: alls=6 made a 25 s file ~41 MB, alls=4 + the bitrate cap ~4 MB.
 GRAIN = "noise=alls=4:allf=t"
 
@@ -32,26 +33,6 @@ class FFmpegError(Exception):
 
 def _font(size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(config.ASSETS_DIR / "font.ttf"), size)
-
-
-def _draw_centered(draw: ImageDraw.ImageDraw, text: str, y: int, size: int, max_width: int) -> int:
-    """Draw text centered at y, shrinking the font until it fits. Returns the line height used."""
-    while size > 18 and _font(size).getlength(text) > max_width:
-        size -= 2
-    font = _font(size)
-    x = (W - font.getlength(text)) / 2
-    draw.text((x + 3, y + 3), text, font=font, fill=(0, 0, 0, 150))
-    draw.text((x, y), text, font=font, fill=(255, 255, 255, 255))
-    return int(size * 1.25)
-
-
-def render_name_card(name: str, out: Path) -> None:
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    y = int(H * 0.70)
-    y += _draw_centered(draw, "Honouring", y, 44, W - 80)
-    _draw_centered(draw, name, y, 76, W - 80)
-    img.save(out)
 
 
 def render_watermark(out: Path) -> None:
@@ -77,14 +58,15 @@ def _normalize(inp: int, seconds: int) -> str:
 
 def build_stitch_cmd(
     intro: Path, clip_a: Path, clip_b: Path, clip_c: Path, endcard: Path, music: Path,
-    name_card: Path, watermark: Path, logos: list[dict], out: Path,
+    plaque_card: Path, plaque_focus: tuple[float, float], watermark: Path, logos: list[dict], out: Path,
 ) -> list[str]:
-    """logos: [{path, x, y, width}] overlaid on clip A."""
+    """logos: [{path, x, y, width}] overlaid on clip A. plaque_focus: nameplate centre in plaque_card pixels."""
     hold_frames = HOLD_S * FPS
+    fx, fy = plaque_focus
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
            "-i", str(intro), "-i", str(clip_a), "-i", str(clip_b), "-i", str(clip_c), "-i", str(endcard),
            "-stream_loop", "-1", "-i", str(music),
-           "-loop", "1", "-framerate", str(FPS), "-t", str(HOLD_S), "-i", str(name_card),
+           "-i", str(plaque_card),
            "-i", str(watermark)]
     for logo in logos:
         cmd += ["-i", str(logo["path"])]
@@ -102,14 +84,11 @@ def build_stitch_cmd(
         f.append(f"[{prev}][logo{i}]overlay=x={int(logo['x'])}:y={int(logo['y'])}[a{i + 1}]")
         prev = f"a{i + 1}"
     f += [
-        "[c]split[c1][c2]",
-        # Victory hold: last frame of C, upscaled first so the slow push-in doesn't jitter.
-        f"[c2]trim=start_frame={CLIP_S * FPS - 1},setpts=PTS-STARTPTS,scale={W * 2}:{H * 2},"
-        f"zoompan=z='1+0.08*on/{hold_frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
-        f":d={hold_frames}:s={W}x{H}:fps={FPS},setsar=1,format=yuv420p[hold0]",
-        "[6:v]format=rgba,fade=t=in:st=0.3:d=0.7:alpha=1[name]",
-        "[hold0][name]overlay=0:0:shortest=1,format=yuv420p[hold]",
-        f"[intro][{prev}][b][c1][hold][end]concat=n=6:v=1:a=0[cat]",
+        # Plaque hold: one still frame, eased push-in from the whole plaque to the engraved name.
+        f"[6:v]zoompan=z='1+{PLAQUE_ZOOM}*(1-cos(PI*on/{hold_frames - 1}))/2'"
+        f":x='{fx:.0f}-iw/zoom/2':y='{fy:.0f}-ih/zoom/2':d={hold_frames}:s={W}x{H}:fps={FPS},"
+        "setsar=1,format=yuv420p,fade=t=in:st=0:d=0.35[hold]",
+        f"[intro][{prev}][b][c][hold][end]concat=n=6:v=1:a=0[cat]",
         f"[cat]{GRADE},{GRAIN}[graded]",
         "[graded][7:v]overlay=0:0,format=yuv420p[v]",
         f"[5:a]atrim=0:{TOTAL_S},asetpts=PTS-STARTPTS,afade=t=out:st={TOTAL_S - 1}:d=1,"
@@ -154,8 +133,8 @@ async def probe(path: Path) -> dict:
 
 async def stitch(job: dict, clip_paths: dict[str, Path], job_dir: Path) -> Path:
     """Render the final video for a job. Writes to a temp file then renames, so a crash never leaves a half file."""
-    name_card = job_dir / "name_card.png"
-    render_name_card(job["name"], name_card)
+    plaque_card = job_dir / "plaque_card.png"
+    plaque_focus = plaque.render_card(job["name"], plaque_card)
     watermark = config.DATA_DIR / "watermark.png"
     if not watermark.exists():
         render_watermark(watermark)
@@ -167,7 +146,7 @@ async def stitch(job: dict, clip_paths: dict[str, Path], job_dir: Path) -> Path:
     a = config.ASSETS_DIR
     cmd = build_stitch_cmd(
         a / "intro.mp4", clip_paths["A"], clip_paths["B"], clip_paths["C"], a / "endcard.mp4", a / "music.mp3",
-        name_card, watermark, logos, tmp,
+        plaque_card, plaque_focus, watermark, logos, tmp,
     )
     await run(cmd, job["id"])
     # Poster = the "Honouring {name}" moment; shown before playback and as the link-preview image.

@@ -8,4 +8,8 @@ assets/**/*.mp4
 assets/*.mp3
 assets/*.ttf
 assets/logos/
+assets/plaque.png
 assets/logo_positions.json
+
+# Source material from LoveWorld (never committed)
+raw/

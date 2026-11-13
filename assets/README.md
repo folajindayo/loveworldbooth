@@ -15,7 +15,10 @@ assets/
   intro.mp4                      3 s branded intro
   endcard.mp4                    3 s end card
   music.mp3                      at least 25 s (shorter tracks loop)
-  font.ttf                       used for the name card and watermark
+  font.ttf                       used for the watermark
+  plaque.png                     the award plaque photo with an empty nameplate
+  plaque.json                    nameplate box in plaque.png pixels, engraving font + colour (in git)
+  plaque_font.ttf                font the name is engraved in
   logos/*.png                    official logos, transparent PNG
   logo_positions.json            logos overlaid on clip A, per template
 ```
@@ -51,4 +54,14 @@ A template with no entry gets no logos.
 3. Optionally add logo positions for the new id.
 4. Restart the service. The capture page shows the new option.
 
-The font must cover every character visitors' names use. If a glyph is missing, it renders as a box.
+## plaque.json
+
+```json
+{"image": "plaque.png", "nameplate": [345, 598, 882, 670], "font": "plaque_font.ttf",
+ "text_color": [43, 28, 8], "uppercase": true}
+```
+
+`nameplate` is `[left, top, right, bottom]` in `plaque.png` pixels: the empty area the name is
+engraved into. If you swap in a different plaque photo, update this box.
+
+The fonts must cover every character visitors' names use. If a glyph is missing, it renders as a box.

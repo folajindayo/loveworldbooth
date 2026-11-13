@@ -75,9 +75,14 @@ def validate() -> list[str]:
         problems.append("OPERATOR_PIN is not set")
     if not MOCK_WAN and not WAVESPEED_API_KEY:
         problems.append("WAVESPEED_API_KEY is not set (or set MOCK_WAN=true)")
-    for name in ("intro.mp4", "endcard.mp4", "music.mp3", "font.ttf", "templates.json"):
+    for name in ("intro.mp4", "endcard.mp4", "music.mp3", "font.ttf", "templates.json", "plaque.json"):
         if not (ASSETS_DIR / name).exists():
             problems.append(f"missing asset: {ASSETS_DIR / name}")
+    if (ASSETS_DIR / "plaque.json").exists():
+        plaque = json.loads((ASSETS_DIR / "plaque.json").read_text())
+        for key in ("image", "font"):
+            if not (ASSETS_DIR / plaque[key]).exists():
+                problems.append(f"missing plaque {key}: {ASSETS_DIR / plaque[key]}")
     if (ASSETS_DIR / "templates.json").exists():
         for tid, t in load_templates().items():
             for clip in CLIPS:

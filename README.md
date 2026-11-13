@@ -34,7 +34,8 @@ capture page ──POST /jobs──▶ photo check (OpenCV) ──▶ jobs + cli
 | `app/main.py` | routes, PIN session, pages, public video routes |
 | `app/worker.py` | pipeline: per-clip state machine, retries, resume, stitching |
 | `app/wan_client.py` | WaveSpeed client (upload, submit, poll, download) + `MockWanClient` |
-| `app/ffmpeg_builder.py` | builds the single ffmpeg command, renders text overlays |
+| `app/ffmpeg_builder.py` | builds the single ffmpeg command, renders the watermark |
+| `app/plaque.py` | engraves the visitor's name on the plaque, composes the 9:16 plaque frame |
 | `app/photo_check.py` | face / blur / size checks, 9:16 crop centred on the face |
 | `app/db.py` | schema + queries |
 | `app/config.py` | `.env` settings, template/asset loading, startup validation |
@@ -47,7 +48,7 @@ capture page ──POST /jobs──▶ photo check (OpenCV) ──▶ jobs + cli
 | 3–8 s | Showcase | swapped clip A + logos at `logo_positions.json` |
 | 8–13 s | Runway entrance | swapped clip B |
 | 13–18 s | Award presentation | swapped clip C |
-| 18–22 s | Victory hold | last frame of C, slow push-in, "Honouring {name}" fades in |
+| 18–22 s | Plaque | the award plaque with the visitor's name engraved on the nameplate, eased push-in from the whole plaque to the name |
 | 22–25 s | End card | `endcard.mp4` |
 
 The whole video also gets one colour grade (`eq`), light grain, a corner watermark ("A LoveWorld
@@ -57,8 +58,10 @@ one that's too long is cut.
 
 Two deliberate deviations from the brief:
 
-- **Text is rendered with Pillow, not `drawtext`.** The name card and watermark are drawn
-  with Pillow into transparent PNGs, then overlaid. Visitor names never pass through ffmpeg
+- **The name is engraved on the award plaque instead of shown as on-screen text.**
+  `app/plaque.py` renders it into the plaque's nameplate (`assets/plaque.json` sets the box, font
+  and colour), with long names wrapping onto two lines. The watermark is also drawn with Pillow
+  rather than `drawtext`. Visitor names never pass through ffmpeg
   filter escaping, long names shrink to fit, and any ffmpeg build works. Some builds, such as
   Homebrew's, ship without freetype and so without `drawtext`.
 - **Grain is lighter and the bitrate is capped.** Grain is `noise=alls=4` and there's a

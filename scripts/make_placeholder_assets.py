@@ -11,6 +11,10 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 ASSETS = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "assets")
+SERIF_CANDIDATES = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
+    "/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf",
+]
 FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
@@ -63,6 +67,25 @@ def main() -> None:
         d.text((40, 60), "LOGO PLACEHOLDER", fill=(255, 255, 255, 230))
         img.save(logo)
         print("created", logo)
+
+    spec = json.loads((ASSETS / "plaque.json").read_text())
+    plaque_font = ASSETS / spec["font"]
+    if not plaque_font.exists():
+        src = next((f for f in SERIF_CANDIDATES if Path(f).exists()), None) or next(
+            (f for f in FONT_CANDIDATES if Path(f).exists()), None)
+        if not src:
+            sys.exit(f"No serif font found; copy a .ttf to {plaque_font}")
+        shutil.copy(src, plaque_font)
+        print("created", plaque_font, "from", src)
+
+    plaque = ASSETS / spec["image"]
+    if not plaque.exists():  # dark plaque with a gold plate exactly where plaque.json says the nameplate is
+        img = Image.new("RGB", (1170, 1280), (18, 20, 30))
+        d = ImageDraw.Draw(img)
+        d.rounded_rectangle((140, 120, 1030, 1160), radius=40, outline=(200, 160, 70), width=10)
+        d.rectangle(spec["nameplate"], fill=(205, 160, 75))
+        img.save(plaque)
+        print("created", plaque)
 
     positions = ASSETS / "logo_positions.json"
     if not positions.exists():

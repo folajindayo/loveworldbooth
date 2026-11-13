@@ -1,0 +1,7 @@
+{
+  "image": "plaque.png",
+  "nameplate": [345, 598, 882, 670],
+  "font": "plaque_font.ttf",
+  "text_color": [43, 28, 8],
+  "uppercase": true
+}
