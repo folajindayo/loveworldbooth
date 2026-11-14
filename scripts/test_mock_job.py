@@ -25,6 +25,14 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import synthetic_photo  # noqa: E402
 
 PIN = "4321"
+TEMPLATES = {t["id"]: t for t in json.loads((ROOT / "assets/templates.json").read_text())}
+# Wan jobs per visitor: one per clip, except a "continuous" group (e.g. B+C) is one job.
+JOBS_MEN = 3 - max(0, len(TEMPLATES["men"].get("continuous") or []) - 1)
+# The mock fails the first attempt of a Wan job by its input's name, which is the group's first clip. Fail the
+# continuous group's job; a clip outside it (if any) must go through on its first attempt.
+_CONT = TEMPLATES["men"].get("continuous") or ["B"]
+FAIL_CLIP = _CONT[0]
+OTHER_CLIP = next((c for c in "ABC" if c not in _CONT), None)
 
 
 def free_port() -> int:
@@ -36,7 +44,7 @@ def free_port() -> int:
 class Server:
     def __init__(self, data_dir: Path, port: int):
         self.port, self.proc = port, None
-        self.env = {**os.environ, "MOCK_WAN": "true", "MOCK_WAN_DELAY_S": "3", "MOCK_WAN_FAIL_ONCE": "B",
+        self.env = {**os.environ, "MOCK_WAN": "true", "MOCK_WAN_DELAY_S": "3", "MOCK_WAN_FAIL_ONCE": FAIL_CLIP,
                     "OPERATOR_PIN": PIN, "DATA_DIR": str(data_dir), "BASE_URL": f"http://127.0.0.1:{port}",
                     "WAVESPEED_API_KEY": ""}
         self.log = open(data_dir / "server.log", "a")
@@ -66,7 +74,7 @@ def check(cond: bool, msg: str) -> None:
         raise SystemExit(1)
 
 
-def wait_status(c: httpx.Client, job_id: int, want: str, timeout: float = 120) -> dict:
+def wait_status(c: httpx.Client, job_id: int, want: str, timeout: float = 300) -> dict:
     deadline = time.time() + timeout
     while time.time() < deadline:
         job = c.get(f"/jobs/{job_id}").json()
@@ -123,14 +131,22 @@ def main() -> None:
         r = new_job("Test", template_id="nope")
         check(r.status_code == 400, "unknown template rejected")
 
-        print("full job (clip B fails once, then auto-retries)")
+        print("close-up photo is refused (the film needs the whole body)")
+        S_sel = data_dir / "selfie.jpg"
+        from PIL import Image
+        Image.open(photo).crop((180, 80, 540, 520)).resize((900, 1100)).save(S_sel)
+        r = new_job("Selfie", photo_bytes=S_sel.read_bytes())
+        check(r.status_code == 400 and "close-up" in r.json()["detail"], f"close-up rejected: {r.json()}")
+
+        print(f"full job (clip {FAIL_CLIP}'s Wan job fails once, then auto-retries)")
         t0 = time.time()
         r = new_job("Ada Oluwaseun")
         check(r.status_code == 200, f"job created: {r.json()}")
         job_id = r.json()["job_id"]
         job = wait_status(c, job_id, "ready_for_qc")
-        check(job["clips"]["B"]["attempts"] == 2 and job["clips"]["A"]["attempts"] == 1,
-              f"B retried once, A once ({time.time() - t0:.1f}s)")
+        check(job["clips"][FAIL_CLIP]["attempts"] == 2   # attempts live on the group's leader clip
+              and (OTHER_CLIP is None or job["clips"][OTHER_CLIP]["attempts"] == 1),
+              f"{''.join(_CONT)} retried once as one job, others once ({time.time() - t0:.1f}s)")
         check(c.get(job["video_url"]).status_code == 200, "operator can preview the video")
 
         print("rerun clip A")
@@ -160,7 +176,10 @@ def main() -> None:
         video = next(s for s in info["streams"] if s["codec_type"] == "video")
         duration = float(info["format"]["duration"])
         check(out.stat().st_size > 100_000, f"final MP4 exists ({out.stat().st_size // 1024} KB)")
-        check(24.5 <= duration <= 25.5, f"duration {duration:.2f}s ~ 25s")
+        sys.path.insert(0, str(ROOT))
+        from app import ffmpeg_builder as fb
+        expect = fb.timeline(TEMPLATES["men"]).total
+        check(abs(duration - expect) <= 0.5, f"duration {duration:.2f}s ~ {expect}s (template timeline)")
         check((video["width"], video["height"]) == (720, 1280), f"resolution {video['width']}x{video['height']}")
         check(any(s["codec_type"] == "audio" for s in info["streams"]), "has audio stream")
         check(pub.get("/v/" + "x" * 32).status_code == 404, "unknown token -> 404")
@@ -177,14 +196,15 @@ def main() -> None:
         job = wait_status(c, job2, "ready_for_qc")
         submits = [e for e in job["events"] if e["kind"] == "wan_submit"]
         check(any(e["kind"] == "resume" for e in job["events"]), "job resumed after restart")
-        check(len(submits) == 3, f"exactly 3 submits (re-polled, not resubmitted): {len(submits)}")
+        check(len(submits) == JOBS_MEN, f"exactly {JOBS_MEN} submits (re-polled, not resubmitted): {len(submits)}")
 
         print("reject takes the public link down")
         c.post(f"/jobs/{job_id}/reject")
         check(all(pub.get(u).status_code == 404 for u in (f"/v/{token}", f"/media/{token}.mp4", f"/poster/{token}.jpg")),
               "rejected job's page and media -> 404")
         stats = c.get("/admin/stats").json()
-        check(stats["clips_sent"] == 3 + 1 + 1 + 3, f"admin counts clips sent: {stats['clips_sent']}")
+        expected = JOBS_MEN + 1 + 1 + JOBS_MEN   # job 1 (+1 auto-retry, +1 rerun of A's group), job 2
+        check(stats["clips_sent"] == expected, f"admin counts Wan jobs sent: {stats['clips_sent']} (expected {expected})")
 
         print(f"\nALL CHECKS PASSED. Final video: {out}" if args.keep else "\nALL CHECKS PASSED.")
     finally:

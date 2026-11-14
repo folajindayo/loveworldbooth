@@ -1,78 +1,253 @@
 {
-  "still_model": "google/nano-banana-2.1/edit",
-  "video_models": {
-    "kling": {
-      "model": "kwaivgi/kling-v4.0/image-to-video",
-      "usd_per_s": 0.157,
-      "body": {
-        "resolution": "720p",
-        "duration": 5,
-        "aspect_ratio": "9:16"
-      }
-    },
-    "seedance": {
-      "model": "bytedance/seedance-2.5/image-to-video",
-      "usd_per_s": 0.36,
-      "body": {
-        "resolution": "720p",
-        "duration": 5,
-        "generate_audio": false
-      }
-    }
+ "still_model": "google/nano-banana-2.1/edit",
+ "video_models": {
+  "kling": {
+   "model": "kwaivgi/kling-v4.0/image-to-video",
+   "usd_per_s": 0.157,
+   "body": {
+    "resolution": "720p",
+    "duration": 5,
+    "aspect_ratio": "9:16"
+   }
   },
-  "stand_ins": {
-    "men": "a Nigerian man in his early 30s, medium build, average height, short neat haircut, clean-shaven, wearing a plain well-fitted charcoal suit, white shirt, no tie, black shoes",
-    "women": "a Nigerian woman in her early 30s, medium build, average height, shoulder-length natural hair neatly styled, wearing a simple elegant knee-length emerald-green dress with short sleeves and low black heels"
-  },
-  "clips": {
-    "A": {
-      "refs": [
-        "raw/reference/expo_hall.png"
-      ],
-      "still_prompt": "Create a new photorealistic vertical 9:16 photograph. Scene: the LoveWorld Expo 2026 exhibition hall shown in reference image 1 - glossy white floor, curved white booths with blue LED light strips, crystal chandeliers, sparkling ceiling - with the background softly out of focus and nobody else near the subject. Subject: {stand_in}, standing alone in the centre of the frame, facing the camera, the whole body visible from head to feet with space above the head and below the feet, arms relaxed at the sides, confident warm smile. Eye-level camera, 35mm lens, static. Soft even key light on the face and body, natural skin texture, sharp focus. No text, no logos, no watermarks.",
-      "motion_prompt": "The person stands in place, shifts weight slightly, smiles at the camera, gives a small confident nod and a gentle wave with one hand, then lowers it. Background lights shimmer subtly. Static locked-off camera, no zoom, no camera movement. Realistic natural human motion."
-    },
-    "B": {
-      "identity_from": "A",
-      "refs": [
-        "raw/reference/stage_runway_2022_clean.png"
-      ],
-      "still_prompt": "Create a new photorealistic vertical 9:16 photograph. The person is exactly the same as in reference image 1 (identical face, hair, body and outfit). Scene: the award stage from reference image 2 - bright blue carpeted stage floor, gold geometric set pieces, stage lights, light haze. The person walks toward the camera down the middle of the blue stage, mid-stride, the whole body visible from head to feet, confident smile, arms swinging naturally. Thin low smoke at floor level, warm spotlights from behind. Eye-level camera in front of the person. Nobody else in the foreground. No text, no logos, no TV graphics, no watermarks.",
-      "motion_prompt": "The person walks confidently toward the camera with natural steps, arms swinging naturally, smiling. Stage lights sweep softly and light haze drifts at floor level. The camera dollies slowly backward to keep the whole body in frame. Realistic natural human motion."
-    },
-    "C": {
-      "identity_from": "A",
-      "refs": [
-        "raw/reference/award_handover_2022_clean.png",
-        "raw/pastor-chris/photo_2026-11-13_08-22-59.jpg",
-        "raw/pastor-chris/photo_2026-11-13_08-22-50.jpg",
-        "raw/pastor-chris/photo_2026-11-13_08-22-55.jpg",
-        "raw/pastor-chris/photo_2026-11-13_08-23-02.jpg",
-        "raw/award/photo_2026-11-13_08-13-27.jpg",
-        "raw/pastor-chris/face_closeup_brocade.jpg"
-      ],
-      "still_prompt": "Create a new photorealistic vertical 9:16 photograph of an award presentation on the stage shown in reference image 2 (gold set, warm stage light, soft haze). The only people in the image are these two. On the left, in the foreground, a step closer to the camera and clearly larger in the frame than Pastor Chris (the most prominent person in the photo): the same person as in reference image 1 (identical face, hair, body and outfit), whole body visible from head to feet, turned three-quarters toward the right, smiling, reaching out to shake hands. On the right, a step further back from the camera: Pastor Chris Oyakhilome with exactly the face in reference images 3 to 6 and 8, wearing the red doctoral gown with royal-blue panels and black velvet bars from reference images 3 to 6, smiling, shaking the person's hand with his right hand and holding out the crystal 'Certificate of Presence' plaque from reference image 7 with his left hand. The hand-over happens between them and does not cover either face. Eye-level camera. No text overlays, no TV graphics, no watermarks.",
-      "motion_prompt": "Pastor Chris hands the crystal plaque to the person while they shake hands; the person receives the plaque with both hands, smiles and turns slightly toward the camera holding it. Pastor Chris smiles and claps lightly. Natural realistic movement, faces stay stable, no morphing. Static camera with a very slight push-in."
-    },
-    "BC": {
-      "identity_from": [
-        "C",
-        "A"
-      ],
-      "refs": [],
-      "still_prompt": "Create a new photorealistic vertical 9:16 photograph that matches reference image 1 exactly in camera position, framing, stage set, lighting and Pastor Chris: the same award stage, Pastor Chris standing in the same place on the right in the same red and royal-blue doctoral gown, holding the crystal plaque, smiling. The person from reference images 1 and 2 (identical face, hair, body and outfit) is now further back at the far left of the stage, several steps away from Pastor Chris, walking toward him, mid-stride, the whole body visible from head to feet, smiling. Pastor Chris must be in exactly the same position and size in the frame as in reference image 1 (right side of the frame); only the person has moved: they are further back toward the left of the stage. The person stays on the left half of the frame. Nobody else in the image. No text, no logos, no watermarks.",
-      "motion_prompt": "The person walks confidently across the stage toward Pastor Chris with natural steps, arms swinging, smiling. Pastor Chris stays standing in the same place on the right, smiling and holding the crystal plaque. They shake hands, Pastor Chris hands over the plaque, the person receives it with both hands and turns toward the camera holding it while Pastor Chris claps. The person always stays to the left of Pastor Chris. Static locked-off camera, no camera movement, no zoom. Realistic natural human motion, faces stay stable, no morphing.",
-      "video": {
-        "duration": 10,
-        "keyframes": [
-          "still:C"
-        ],
-        "last_image": "lastframe:C"
-      },
-      "install_as": [
-        "B",
-        "C"
-      ]
-    }
+  "seedance": {
+   "model": "bytedance/seedance-2.5/image-to-video",
+   "usd_per_s": 0.36,
+   "body": {
+    "resolution": "720p",
+    "duration": 5,
+    "generate_audio": false
+   }
   }
+ },
+ "stand_ins": {
+  "men": "a Nigerian man in his early 30s, medium build, average height, short neat haircut, clean-shaven, wearing a plain well-fitted charcoal suit, white shirt, no tie, black shoes",
+  "women": "a Nigerian woman in her early 30s, medium build, average height, shoulder-length natural hair neatly styled, wearing a simple elegant knee-length emerald-green dress with short sleeves and low black heels"
+ },
+ "clips": {
+  "A": {
+   "refs": [
+    "raw/reference/expo_hall.png"
+   ],
+   "still_prompt": "Create a new photorealistic vertical 9:16 photograph. Scene: the LoveWorld Expo 2026 exhibition hall shown in reference image 1 - glossy white floor, curved white booths with blue LED light strips, crystal chandeliers, sparkling ceiling - with the background softly out of focus and nobody else near the subject. Subject: {stand_in}, standing alone in the centre of the frame, facing the camera, the whole body visible from head to feet with space above the head and below the feet, arms relaxed at the sides, confident warm smile. Eye-level camera, 35mm lens, static. Soft even key light on the face and body, natural skin texture, sharp focus. No text, no logos, no watermarks.",
+   "motion_prompt": "The person stands in place, shifts weight slightly, smiles at the camera, gives a small confident nod and a gentle wave with one hand, then lowers it. Background lights shimmer subtly. Static locked-off camera, no zoom, no camera movement. Realistic natural human motion."
+  },
+  "B": {
+   "identity_from": "A",
+   "refs": [
+    "raw/reference/stage_runway_2022_clean.png"
+   ],
+   "still_prompt": "Create a new photorealistic vertical 9:16 photograph. The person is exactly the same as in reference image 1 (identical face, hair, body and outfit). Scene: the award stage from reference image 2 - bright blue carpeted stage floor, gold geometric set pieces, stage lights, light haze. The person walks toward the camera down the middle of the blue stage, mid-stride, the whole body visible from head to feet, confident smile, arms swinging naturally. Thin low smoke at floor level, warm spotlights from behind. Eye-level camera in front of the person. Nobody else in the foreground. No text, no logos, no TV graphics, no watermarks.",
+   "motion_prompt": "The person walks confidently toward the camera with natural steps, arms swinging naturally, smiling. Stage lights sweep softly and light haze drifts at floor level. The camera dollies slowly backward to keep the whole body in frame. Realistic natural human motion."
+  },
+  "C": {
+   "identity_from": "A",
+   "refs": [
+    "raw/reference/award_handover_2022_clean.png",
+    "raw/pastor-chris/photo_2026-11-13_08-22-59.jpg",
+    "raw/pastor-chris/photo_2026-11-13_08-22-50.jpg",
+    "raw/pastor-chris/photo_2026-11-13_08-22-55.jpg",
+    "raw/pastor-chris/photo_2026-11-13_08-23-02.jpg",
+    "raw/award/photo_2026-11-13_08-13-27.jpg",
+    "raw/pastor-chris/face_closeup_brocade.jpg"
+   ],
+   "still_prompt": "Create a new photorealistic vertical 9:16 photograph of an award presentation on the stage shown in reference image 2 (gold set, warm stage light, soft haze). The only people in the image are these two. On the left, in the foreground, a step closer to the camera and clearly larger in the frame than Pastor Chris (the most prominent person in the photo): the same person as in reference image 1 (identical face, hair, body and outfit), whole body visible from head to feet, turned three-quarters toward the right, smiling, reaching out to shake hands. On the right, a step further back from the camera: Pastor Chris Oyakhilome with exactly the face in reference images 3 to 6 and 8, wearing the red doctoral gown with royal-blue panels and black velvet bars from reference images 3 to 6, smiling, shaking the person's hand with his right hand and holding out the crystal 'Certificate of Presence' plaque from reference image 7 with his left hand. The hand-over happens between them and does not cover either face. Eye-level camera. No text overlays, no TV graphics, no watermarks.",
+   "motion_prompt": "Pastor Chris hands the crystal plaque to the person while they shake hands; the person receives the plaque with both hands, smiles and turns slightly toward the camera holding it. Pastor Chris smiles and claps lightly. Natural realistic movement, faces stay stable, no morphing. Static camera with a very slight push-in."
+  },
+  "BC": {
+   "identity_from": [
+    "C",
+    "A"
+   ],
+   "refs": [],
+   "still_prompt": "Create a new photorealistic vertical 9:16 photograph that matches reference image 1 exactly in camera position, framing, stage set, lighting and Pastor Chris: the same award stage, Pastor Chris standing in the same place on the right in the same red and royal-blue doctoral gown, holding the crystal plaque, smiling. The person from reference images 1 and 2 (identical face, hair, body and outfit) is now further back at the far left of the stage, several steps away from Pastor Chris, walking toward him, mid-stride, the whole body visible from head to feet, smiling. Pastor Chris must be in exactly the same position and size in the frame as in reference image 1 (right side of the frame); only the person has moved: they are further back toward the left of the stage. The person stays on the left half of the frame. Nobody else in the image. No text, no logos, no watermarks.",
+   "motion_prompt": "The person walks confidently across the stage toward Pastor Chris with natural steps, arms swinging, smiling. Pastor Chris stays standing in the same place on the right, smiling and holding the crystal plaque. They shake hands, Pastor Chris hands over the plaque, the person receives it with both hands and turns toward the camera holding it while Pastor Chris claps. The person always stays to the left of Pastor Chris. Static locked-off camera, no camera movement, no zoom. Realistic natural human motion, faces stay stable, no morphing.",
+   "video": {
+    "duration": 10,
+    "keyframes": [
+     "still:C"
+    ],
+    "last_image": "lastframe:C"
+   },
+   "install_as": [
+    "B",
+    "C"
+   ]
+  },
+  "A2": {
+   "identity_from": [
+    "A"
+   ],
+   "refs": [
+    "raw/reference/expo_hall.png"
+   ],
+   "still_prompt": "Create a new photorealistic vertical 9:16 photograph at the LoveWorld Expo 2026 exhibition hall from reference image 2 (glossy white floor, curved white booths with blue LED strips, crystal chandeliers, purple floral garlands). The person from reference image 1 (identical face, hair, body and outfit) walks casually through the hall toward the camera in the middle ground, relaxed natural posture, looking at the exhibits with a light smile, the whole body visible from head to feet, centred and clearly the main subject. The middle of the hall directly behind the person is open: just the booths, floor and chandeliers, with nobody standing behind them. A few other expo attendees walk and talk only at the far left and far right edges of the frame, smaller and softly out of focus, well away from the person. Natural documentary event photo, eye level, 35mm lens, shallow depth of field, real venue lighting. No text overlays, no watermarks.",
+   "motion_prompt": "The person walks two relaxed steps forward through the expo hall, then stops and stays at the same distance from the camera, glances to the side at a booth, then looks at the camera, smiles warmly and gives a small, relaxed wave with the hand at shoulder height, well away from the face, then lowers it. Other attendees walk and chat naturally at the far left and far right edges of the frame, softly out of focus; they stay at the edges and never walk behind or in front of the main person. Camera steady and locked off, no zoom, no tracking. Realistic natural human motion; nobody walks in front of the main person; faces stay stable, no morphing.",
+   "install_as": [
+    "A"
+   ]
+  },
+  "AISLE": {
+   "identity_from": [
+    "A"
+   ],
+   "refs": [
+    "raw/reference/awards_photos/20_clean.png",
+    "raw/reference/awards_photos/10_clean.png",
+    "raw/reference/awards_photos/pc_04_crop.jpg",
+    "raw/reference/awards_photos/pc_01_crop.jpg",
+    "raw/reference/awards_photos/04.jpg",
+    "raw/award/photo_2026-11-13_08-13-27.jpg"
+   ],
+   "still_prompt": "Create a new photorealistic vertical 9:16 event photograph on the purple-carpet awards stage shown in reference images 2 and 5, taken from on the stage. In the background: the edge of the stage with moving-head lights and pink flower arrangements, and beyond it the seated audience in the green-lit hall with vine-wrapped columns from reference image 2, darker and softly out of focus. The person from reference image 1 (identical face, hair, body and outfit) has just stepped up onto the stage from the audience and walks across the purple carpet toward the camera, still several steps away from Pastor Chris near the back of the stage, in the left half of the frame, the whole body visible from head to feet, smiling. In the right third of the frame, in the foreground, Pastor Chris Oyakhilome stands exactly as in reference images 3 and 4 (same face, same red doctoral gown with gold and royal-blue stripes and black velvet bars), beside an ornate gold chair with tropical plants and a warm gold stage sculpture behind him as in reference image 5, holding the clear crystal 'Certificate of Presence' plaque from reference image 6 (not the gold framed plaque from reference image 5) and smiling toward the person. Nobody else is on the stage. Real event lighting, sharp focus on the two people. No text, no logos, no watermarks.",
+   "motion_prompt": "The person walks confidently across the purple carpet toward Pastor Chris, smiling, while the audience in the background cheers. They reach Pastor Chris and shake hands; Pastor Chris hands over the crystal plaque; the person receives it with both hands and turns to the camera holding it while Pastor Chris claps and smiles. Pastor Chris stays in the right third of the frame the whole time and the person stays to his left. One continuous shot, steady camera, no cuts, realistic natural human motion, faces stay stable, no morphing.",
+   "video": {
+    "duration": 10,
+    "last_image": "still:AISLE_END"
+   },
+   "install_as": [
+    "B",
+    "C"
+   ]
+  },
+  "AISLE_END": {
+   "identity_from": [
+    "AISLE"
+   ],
+   "refs": [
+    "raw/award/photo_2026-11-13_08-13-27.jpg"
+   ],
+   "still_prompt": "Edit reference image 1 and keep the exact same camera position, framing, purple-carpet stage, background audience, lighting, and Pastor Chris's position, size and gown: the person has now walked up and stands in the left foreground beside Pastor Chris, facing the camera, holding the crystal plaque from reference image 2 in both hands at chest height and smiling, while Pastor Chris, still in the right third of the frame, claps and smiles. Both visible from head to knees. Photorealistic, same lighting. No text, no logos, no watermarks."
+  },
+  "AISLE15": {
+   "identity_from": [
+    "A"
+   ],
+   "refs": [
+    "raw/reference/awards_photos/20_clean.png",
+    "raw/reference/awards_photos/10_clean.png",
+    "raw/reference/awards_photos/pc_04_crop.jpg",
+    "raw/reference/awards_photos/pc_01_crop.jpg",
+    "raw/reference/awards_photos/04.jpg",
+    "raw/award/photo_2026-11-13_08-13-27.jpg"
+   ],
+   "still_prompt": "Create a new photorealistic vertical 9:16 event photograph on the purple-carpet awards stage of reference images 2, 3 and 6, taken from on the stage looking toward the audience. The person from reference image 1 (identical face, hair, body and outfit) is at the front edge of the stage on the left side, just stepping up the stage steps from the audience between the moving-head lights and pink flower arrangements, several metres from the camera, the whole body visible, smiling. Behind them the seated audience in the green-lit hall with vine-wrapped columns from reference image 2, lower than the stage, darker and softly out of focus. In the right third of the frame and closer to the camera, Pastor Chris Oyakhilome stands exactly as in reference images 4 and 5 (same face; red doctoral gown with gold and royal-blue stripes and black velvet bars) beside an ornate gold chair with tropical plants, holding the clear crystal 'Certificate of Presence' plaque from reference image 7 (not a gold framed plaque) and smiling toward the person. Nobody else is on the stage. Real event lighting. No text, no logos, no watermarks.",
+   "motion_prompt": "The person climbs the last stage steps from the audience onto the purple stage, walks confidently across the stage toward Pastor Chris while the audience cheers, they shake hands, Pastor Chris hands over the crystal plaque, the person receives it with both hands and turns to the camera holding it while Pastor Chris claps and smiles. The camera slowly and smoothly pushes in throughout the shot and ends waist-up on the two of them. Pastor Chris stays on the right side and the person stays to his left the whole time. One continuous shot, no cuts, realistic natural human motion, faces stay stable, no morphing.",
+   "video": {
+    "duration": 15,
+    "last_image": "still:AISLE15_END"
+   },
+   "install_as": [
+    "B",
+    "C"
+   ]
+  },
+  "AISLE15_END": {
+   "identity_from": [
+    "AISLE15"
+   ],
+   "refs": [
+    "raw/reference/awards_photos/pc_04_crop.jpg",
+    "raw/reference/awards_photos/pc_01_crop.jpg",
+    "raw/award/photo_2026-11-13_08-13-27.jpg"
+   ],
+   "still_prompt": "Create a closer, waist-up vertical 9:16 photograph of the same moment and place as reference image 1, as if the camera has slowly moved in toward the two people: the same person from reference image 1 (identical face, hair and outfit) now stands on the left beside Pastor Chris, facing the camera, holding the clear crystal plaque from reference image 4 in both hands at chest height and smiling; Pastor Chris (same face and gown as in reference images 1 to 3) stands on the right, clapping and smiling. Both framed from the waist up with large, sharp faces; the same purple stage, gold chair, plants and green-lit hall softly out of focus behind them. Photorealistic, same lighting. No text, no logos, no watermarks."
+  },
+  "RUNWAY": {
+   "identity_from": [
+    "A"
+   ],
+   "refs": [
+    "raw/reference/aisle_2022_clean.png",
+    "raw/pastor-chris/photo_2026-11-13_08-22-59.jpg",
+    "raw/pastor-chris/photo_2026-11-13_08-22-50.jpg",
+    "raw/pastor-chris/photo_2026-11-13_08-22-55.jpg",
+    "raw/pastor-chris/photo_2026-11-13_08-23-02.jpg",
+    "raw/award/photo_2026-11-13_08-13-27.jpg",
+    "raw/reference/award_handover_2022_clean.png"
+   ],
+   "still_prompt": "Create a new photorealistic vertical 9:16 photograph from the LoveWorld awards night, shot from EXACTLY the camera position of reference image 2: a stage camera on a tripod ON THE STAGE, at chest height, looking straight out along the long raised white catwalk that runs from the front of the stage out into the arena. The catwalk is at the same height as the stage floor and joins it at the bottom of the frame, so the floor is continuous and flat from the camera to the far end: there are NO steps and NO stairs anywhere in the frame. Both sides of the catwalk are lined with white flower arrangements, floor lights and cold-spark fountains; the packed audience sits on both sides and fills the far end of the arena; the far end of the catwalk is the BACK of the arena (seating and a small lit control booth), there is NO stage at the far end, the stage is under the camera. The person from reference image 1 (identical face, hair, body and outfit) walks along the middle of the catwalk toward the camera, about eight metres away, whole body visible, smiling. On the right side of the frame, about two metres from the camera, standing on the flat stage floor exactly where the catwalk begins, Pastor Chris Oyakhilome waits for them, turned three-quarters toward the catwalk so his face is clearly visible, with exactly the face in reference images 3 to 6 and the red doctoral gown with royal-blue panels and black velvet bars from reference images 3 to 6, holding the clear crystal 'Certificate of Presence' plaque from reference image 7, smiling at the approaching person; he is visible from head to below the knees. Nobody else is on the catwalk or the stage. Stage lights, light haze, dark arena. No text, no logos, no watermarks.",
+   "motion_prompt": "Real-time speed, NOT slow motion. The camera is locked off on a tripod on the stage and only pushes in very slowly and smoothly over the whole twelve seconds; the first second continues exactly from the first frame with the same framing, and Pastor Chris stays in frame on the right the entire time. The person walks briskly and confidently along the flat catwalk straight toward the camera at a normal, lively walking pace, through the cold-spark fountains, while the audience on both sides cheers and claps. After about five seconds they reach Pastor Chris where the catwalk meets the stage, bow their head slightly in respect as they shake his hand, Pastor Chris hands over the crystal plaque, the person takes it with both hands, and both turn to face the camera, the person holding the plaque on the left and Pastor Chris clapping and smiling on the right, with the catwalk, sparks and cheering arena behind them. Flat floor, no steps. One continuous shot, no cuts, natural real-time human motion, faces stay stable, no morphing.",
+   "video": {
+    "duration": 12,
+    "last_image": "still:RUNWAY_END"
+   },
+   "install_as": [
+    "A",
+    "B",
+    "C"
+   ]
+  },
+  "RUNWAY_END": {
+   "identity_from": [
+    "RUNWAY"
+   ],
+   "refs": [
+    "raw/pastor-chris/photo_2026-11-13_08-22-59.jpg",
+    "raw/pastor-chris/photo_2026-11-13_08-22-50.jpg",
+    "raw/award/photo_2026-11-13_08-13-27.jpg"
+   ],
+   "still_prompt": "Create a closer, waist-up vertical 9:16 photograph of the same moment and place as reference image 1, a few seconds later, the camera still on the stage at the head of the runway and moved in toward the two people: the same person from reference image 1 (identical face, hair and outfit) now stands on the stage on the left beside Pastor Chris, facing the camera, holding the clear crystal plaque from reference image 4 in both hands at chest height and smiling; Pastor Chris (same face and red gown with royal-blue panels and black velvet bars as in reference images 1 to 3) stands on the right, clapping and smiling. Both framed from the waist up with large, sharp faces. Behind them, exactly as in reference image 1: the white runway running away from the stage into the arena, the cold-spark fountains along it and the cheering audience on both sides, softly out of focus. They stand on the flat stage floor where the catwalk begins; no steps or stairs anywhere. Photorealistic, same lighting. No text, no logos, no watermarks."
+  },
+  "PODIUM": {
+   "identity_from": [
+    "A"
+   ],
+   "refs": [
+    "raw/reference/aisle_purple.jpg",
+    "raw/reference/podium_bow.jpg",
+    "raw/reference/podium_handshake.jpg",
+    "raw/reference/podium_kneel.jpg",
+    "raw/pastor-chris/photo_2026-11-13_08-22-59.jpg",
+    "raw/pastor-chris/photo_2026-11-13_08-22-50.jpg",
+    "raw/award/photo_2026-11-13_08-13-27.jpg"
+   ],
+   "still_prompt": "Create a new photorealistic vertical 9:16 event photograph at the LoveWorld Expo awards, taken by a professional event photographer standing on the floor in front of the stage, at chest height, at a three-quarter angle onto the stage, exactly the camera placement of reference images 3, 4 and 5. The stage (the podium) is the one in references 3 to 5: a raised stage about 60 cm high covered in purple carpet; on it a large green tropical plant arrangement in a white rectangular planter, a tall gold and lime-green angular set piece behind it, a royal-blue drape at the right, an ornate gold-and-cream throne chair at the right, and a large LED wall at the far left; dark arena behind. In front of the stage runs the wide purple-carpeted aisle from reference image 2, at floor level, with two shallow purple-carpeted steps up onto the stage at its front-left. Pastor Chris Oyakhilome stands ON THE STAGE at the right of the frame, near the plant arrangement, turned three-quarters to the left toward the steps so his face is clearly visible, with exactly the face in reference images 6 and 7 and the red doctoral gown with gold and royal-blue vertical stripes and black velvet chevrons on the sleeves from references 3 to 5, holding the clear crystal 'Certificate of Presence' plaque from reference image 8. One dignitary in a royal-blue doctoral gown stands on the stage at the far right edge, behind him. The person from reference image 1 (identical face, hair, body and outfit) walks along the purple aisle on the floor toward the steps, at the left of the frame, about five metres from the camera, whole body visible, three-quarter front view, smiling. Nobody else on the aisle. Warm stage lighting as in references 3 to 5. No text, no logos, no watermarks.",
+   "motion_prompt": "Real-time speed, NOT slow motion: natural, brisk walking pace with normal step rhythm. The person walks along the purple aisle toward the stage, steps up the two steps onto the stage, walks to Pastor Chris, and bows their head and upper body respectfully as they shake his hand, exactly like the awardees in the reference photos. Pastor Chris hands them the crystal plaque, they take it with both hands, and both turn to face the camera, the person on the left holding the plaque and Pastor Chris on the right clapping and smiling. The camera is a steady handheld event camera on the floor in front of the stage: it pans gently to follow the person and slowly pushes in, ending on a waist-up two-shot. Pastor Chris stays on the stage on the right the whole time. One continuous shot, no cuts, natural human motion, faces stay stable, no morphing.",
+   "video": {
+    "duration": 12,
+    "last_image": "still:PODIUM_END"
+   },
+   "install_as": [
+    "A",
+    "B",
+    "C"
+   ]
+  },
+  "PODIUM_END": {
+   "identity_from": [
+    "PODIUM"
+   ],
+   "refs": [
+    "raw/pastor-chris/photo_2026-11-13_08-22-59.jpg",
+    "raw/pastor-chris/photo_2026-11-13_08-22-50.jpg",
+    "raw/award/photo_2026-11-13_08-13-27.jpg",
+    "raw/reference/podium_handshake.jpg"
+   ],
+   "still_prompt": "Create a waist-up vertical 9:16 photograph of the same moment and place as reference image 1, a few seconds later, the camera in the same position in front of the stage and moved in closer: the same person from reference image 1 (identical face, hair and outfit) now stands ON THE STAGE on the left beside Pastor Chris, both facing the camera, the person holding the clear crystal plaque from reference image 4 in both hands at chest height and smiling; Pastor Chris (same face and red doctoral gown with gold and royal-blue stripes and black velvet chevrons as in references 1 to 3 and 5) stands on the right, clapping and smiling. Behind them, exactly as in reference image 5: the green tropical plants in the white planter, the gold and lime-green angular set piece and the royal-blue drape, softly out of focus. Large, sharp faces. Photorealistic, warm stage lighting. No text, no logos, no watermarks."
+  },
+  "PODIUM2": {
+   "identity_from": [
+    "PODIUM_END"
+   ],
+   "refs": [
+    "raw/reference/aisle_purple.jpg",
+    "raw/reference/podium_handshake.jpg",
+    "raw/reference/podium_bow.jpg",
+    "raw/pastor-chris/photo_2026-11-13_08-22-59.jpg",
+    "raw/award/photo_2026-11-13_08-13-27.jpg"
+   ],
+   "still_prompt": "Create a new photorealistic vertical 9:16 event photograph of exactly the same stage, set, lighting, Pastor Chris and person as reference image 1, a few seconds EARLIER, taken by an event photographer standing on the floor in front of the stage at a three-quarter angle, the camera a little further back so the whole scene fits. The podium stage from reference 1 and references 3 and 4: low raised stage in purple carpet with two shallow purple steps at its front-left, green tropical plants in a white rectangular planter, the gold and lime-green angular set piece, the royal-blue drape, the ornate gold-and-cream throne chair, and at the far left a large LED wall showing rows of warm amber-gold motifs; a dignitary in a royal-blue doctoral gown stands at the right edge. Pastor Chris (same face and red doctoral gown with gold and royal-blue stripes and black velvet chevrons as reference 1) stands ON THE STAGE at the right of the frame near the planter, turned three-quarters to the left toward the steps, holding the clear crystal plaque from reference image 6, waiting. In front of the stage spreads the wide purple-carpeted aisle floor from reference image 2, edged with a low row of white flower arrangements and black stage-monitor speakers; beyond the floor, far in the background, a dark out-of-focus audience; a few photographers with cameras on tripods stand only at the far RIGHT, behind the stage. Nobody else at all on the left half of the frame. The person from reference image 1 (identical face, hair and outfit) walks across the purple aisle floor toward the stage steps, far back near the left edge of the frame, about eight metres from the stage steps, small in the frame, whole body visible, three-quarter front view, smiling. Nobody else on the aisle floor near them. No text, no logos, no watermarks.",
+   "motion_prompt": "Real-time speed, NOT slow motion: a natural, brisk walking pace with a normal step rhythm, like a real awards night. The person walks across the purple aisle floor toward the stage for about five seconds, steps up the two steps onto the stage, walks to Pastor Chris, and bows their head and upper body respectfully as they shake his hand, exactly like the awardees in the reference photos. Pastor Chris hands them the crystal plaque, they take it with both hands, and both turn to face the camera, the person on the left holding the plaque and Pastor Chris on the right clapping and smiling. The camera is a steady event camera on the floor in front of the stage: it pans gently to follow the person and pushes in slowly, ending on the two of them. Pastor Chris stays on the stage on the right the whole time. One continuous shot, no cuts, natural human motion, faces stay stable, no morphing.",
+   "video": {
+    "duration": 12,
+    "last_image": "still:PODIUM_END"
+   },
+   "install_as": [
+    "A",
+    "B",
+    "C"
+   ]
+  }
+ }
 }

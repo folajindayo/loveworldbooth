@@ -25,7 +25,7 @@ class PhotoInfo:
     height: int
 
 
-def check_and_prepare(data: bytes, original_out: Path, prepared_out: Path) -> PhotoInfo:
+def check_and_prepare(data: bytes, original_out: Path, prepared_out: Path, face_out: Path | None = None) -> PhotoInfo:
     try:
         img = Image.open(io.BytesIO(data))
         img = ImageOps.exif_transpose(img).convert("RGB")
@@ -50,18 +50,34 @@ def check_and_prepare(data: bytes, original_out: Path, prepared_out: Path) -> Ph
             "Hold still, tap to focus and retake."
         )
 
-    faces = _cascade.detectMultiScale(gray, scaleFactor=1.08, minNeighbors=5, minSize=(28, 28))
+    faces, _, weights = _cascade.detectMultiScale3(gray, scaleFactor=1.08, minNeighbors=5, minSize=(28, 28),
+                                                   outputRejectLevels=True)
     if config.REQUIRE_FACE and len(faces) == 0:
         raise PhotoRejected("No face found. Visitor should face the camera with good light on their face; retake.")
 
     # Centre the 9:16 crop on the largest face so the person isn't cut off.
     face_cx = None
     if len(faces):
-        fx, fy, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+        # The most confident detection, not the largest: Haar's biggest box can be a false hit (trousers, a
+        # pattern); the real face scores far higher (7.1 vs 0.7 on the test photo).
+        fx, fy, fw, fh = faces[int(np.argmax(np.ravel(weights)))]
         face_cx = (fx + fw / 2) / scale
+        # The film shows the whole body, so the photo must too. A standing adult's head is about 1/8 of their
+        # height; in a selfie or head-and-shoulders shot the face fills far more of the frame (a selfie
+        # measured 0.44 vs 0.05-0.09 for full-length shots). Without the body, Wan invents one per clip.
+        ratio = fh / gray.shape[0]
+        if ratio > config.MAX_FACE_RATIO:
+            raise PhotoRejected(
+                "This is a close-up. Step back about 3 metres and retake: we need the whole person, head to feet.")
 
     original_out.write_bytes(data)
     _to_portrait(img, face_cx).save(prepared_out, "JPEG", quality=92)
+    if face_out is not None and len(faces):
+        # Full-resolution face crop for the face-identity pass: the face box from the analysis copy, scaled back.
+        m = max(fw, fh) / scale * 0.95
+        cx, cy = face_cx, (fy + fh / 2) / scale
+        img.crop((int(max(0, cx - m)), int(max(0, cy - m)), int(min(w, cx + m)), int(min(h, cy + m)))).save(
+            face_out, "JPEG", quality=95)
     return PhotoInfo(sharpness=round(sharpness, 1), faces=len(faces), width=w, height=h)
 
 

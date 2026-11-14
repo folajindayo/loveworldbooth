@@ -1,6 +1,84 @@
 [
-  {"id": "men", "label": "Men", "folder": "templates/men",
-   "swap_regions": {"B": {"x": 0, "width": 384, "feather": 40}, "C": {"x": 0, "width": 384, "feather": 40}}},
-  {"id": "women", "label": "Women", "folder": "templates/women",
-   "swap_regions": {"B": {"x": 0, "width": 384, "feather": 40}, "C": {"x": 0, "width": 384, "feather": 40}}}
+  {
+    "id": "men",
+    "label": "Men",
+    "folder": "templates/men",
+    "continuous": [
+      "A",
+      "B",
+      "C"
+    ],
+    "swap_regions": {
+      "A": {
+        "keys": [
+          {
+            "t": 0,
+            "x": 0,
+            "width": 440
+          },
+          {
+            "t": 2.6,
+            "x": 0,
+            "width": 430
+          },
+          {
+            "t": 3.6,
+            "x": 0,
+            "width": 372
+          },
+          {
+            "t": 12,
+            "x": 0,
+            "width": 362
+          }
+        ]
+      }
+    },
+    "seconds": {
+      "A": 4,
+      "B": 4,
+      "C": 4
+    }
+  },
+  {
+    "id": "women",
+    "label": "Women",
+    "folder": "templates/women",
+    "continuous": [
+      "A",
+      "B",
+      "C"
+    ],
+    "swap_regions": {
+      "A": {
+        "keys": [
+          {
+            "t": 0,
+            "x": 0,
+            "width": 440
+          },
+          {
+            "t": 3.4,
+            "x": 0,
+            "width": 420
+          },
+          {
+            "t": 4.4,
+            "x": 0,
+            "width": 368
+          },
+          {
+            "t": 12,
+            "x": 0,
+            "width": 360
+          }
+        ]
+      }
+    },
+    "seconds": {
+      "A": 4,
+      "B": 4,
+      "C": 4
+    }
+  }
 ]

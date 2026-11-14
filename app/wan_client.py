@@ -6,6 +6,7 @@ API (docs: wavespeed.ai/docs):
   GET  {base}/predictions/{id}/result          -> data.status, data.outputs[], data.error
 Statuses: created | processing (running), completed (done), failed | cancelled | timeout | deleted (terminal failure).
 """
+import asyncio
 import logging
 import mimetypes
 import shutil
@@ -106,15 +107,38 @@ class WanClient:
             return TaskResult("failed", error=data.get("error") or status)
         return TaskResult("running")
 
-    async def download(self, url: str, dest: Path) -> None:
+    async def download(self, url: str, dest: Path, tries: int = 6, stall_s: float = 30.0) -> None:
+        """Fetch a finished output. The CDN sometimes drops the connection mid-file, or leaves it open and stops
+        sending (seen: 14 min with no bytes and httpx's read timeout never fired). The video is already paid for,
+        so retry the download, resuming from the bytes we have, instead of letting the caller regenerate it.
+        The stall deadline is ours (no new bytes for stall_s -> abort this attempt), not the HTTP library's."""
         tmp = dest.with_suffix(".part")
+        tmp.unlink(missing_ok=True)
         async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=15.0), follow_redirects=True) as raw:
-            async with raw.stream("GET", url) as resp:
-                _check(resp, "download")
-                with tmp.open("wb") as fh:
-                    async for chunk in resp.aiter_bytes(1 << 16):
-                        fh.write(chunk)
-        tmp.replace(dest)
+            for attempt in range(1, tries + 1):
+                have = tmp.stat().st_size if tmp.exists() else 0
+                try:
+                    headers = {"Range": f"bytes={have}-"} if have else {}
+                    async with raw.stream("GET", url, headers=headers) as resp:
+                        _check(resp, "download")
+                        if have and resp.status_code != 206:      # server ignored the range: start over
+                            have = 0
+                        chunks = resp.aiter_raw()
+                        with tmp.open("ab" if have else "wb") as fh:
+                            while True:
+                                try:
+                                    chunk = await asyncio.wait_for(anext(chunks), stall_s)
+                                except StopAsyncIteration:
+                                    break
+                                fh.write(chunk)
+                    tmp.replace(dest)
+                    return
+                except (httpx.TransportError, httpx.RemoteProtocolError, TimeoutError) as e:
+                    if attempt == tries:
+                        raise
+                    log.warning("download %s: %r after %s bytes, retry %s/%s", dest.name, e,
+                                tmp.stat().st_size if tmp.exists() else 0, attempt, tries - 1)
+                    await asyncio.sleep(min(30, 2 ** attempt))
 
 
 class MockWanClient:

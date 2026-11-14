@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from fastapi.staticfiles import StaticFiles
 
 from . import config, db
+from . import ffmpeg_builder as fb
 from .photo_check import PhotoRejected, check_and_prepare
 from .worker import Worker, job_dir
 
@@ -251,7 +252,8 @@ async def create_job(
     staging = config.DATA_DIR / "staging" / secrets.token_hex(8)
     staging.mkdir(parents=True)
     try:
-        info = await asyncio.to_thread(check_and_prepare, data, staging / "original.jpg", staging / "photo.jpg")
+        info = await asyncio.to_thread(check_and_prepare, data, staging / "original.jpg", staging / "photo.jpg",
+                                       staging / "face.jpg")
     except PhotoRejected as e:
         _rmtree(staging)
         raise HTTPException(400, str(e))
@@ -260,6 +262,8 @@ async def create_job(
     d = job_dir(job["id"])
     (staging / "original.jpg").rename(d / "original.jpg")
     (staging / "photo.jpg").rename(d / "photo.jpg")
+    if (staging / "face.jpg").exists():
+        (staging / "face.jpg").rename(d / "face.jpg")
     _rmtree(staging)
     db.update_job(job["id"], photo_path=str(d / "photo.jpg"))
     db.add_event(job["id"], "created", f"template={template_id} photo={info}")
@@ -322,9 +326,11 @@ async def rerun(job_id: int, clip: str):
         raise HTTPException(409, "This job is still processing. Wait until it is ready or failed, then rerun.")
     if job["status"] not in ("ready_for_qc", "failed"):
         raise HTTPException(409, f"Can't rerun a job that is {job['status']}.")
-    db.update_clip(job_id, clip, status="pending", attempts=0, provider_task_id=None, error=None)
+    group = fb.group_of(config.load_templates()[job["template_id"]], clip)   # a continuous take reruns together
+    for c in group:
+        db.update_clip(job_id, c, status="pending", attempts=0, provider_task_id=None, error=None)
     db.update_job(job_id, status="queued", error=None)
-    db.add_event(job_id, "rerun", clip)
+    db.add_event(job_id, "rerun", "".join(group))
     log.info("job=%s rerun clip %s", job_id, clip)
     worker.start(job_id)
     return {"ok": True, "status": "queued"}

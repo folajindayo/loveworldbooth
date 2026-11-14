@@ -34,6 +34,19 @@ MAX_CONCURRENT_WAN_JOBS = _int("MAX_CONCURRENT_WAN_JOBS", 6)
 MAX_CONCURRENT_FFMPEG = _int("MAX_CONCURRENT_FFMPEG", 4)
 
 MOCK_WAN = _bool("MOCK_WAN", False)
+# Second pass after Wan: a dedicated face-swap model puts the visitor's own face (hi-res crop from their photo)
+# onto every frame. Wan carries body, clothes and motion; this carries facial likeness.
+FACE_SWAP = _bool("FACE_SWAP", True)
+# Per-visitor swap engine. "seedance": Seedance 2.5 video-edit (Turbo) re-renders the person from the visitor's own
+# photos (face, hair, glasses, outfit) — measured clearly closer likeness than Wan, ~2.4x the cost.
+# "wan": Wan 2.2 Animate replace (+ the optional FACE_SWAP pass).
+SWAP_ENGINE = os.getenv("SWAP_ENGINE", "seedance").strip().lower()
+SEEDANCE_EDIT_MODEL = os.getenv("SEEDANCE_EDIT_MODEL", "bytedance/seedance-2.5/video-edit-turbo")
+SEEDANCE_EDIT_PROMPT = os.getenv("SEEDANCE_EDIT_PROMPT", (
+    "Replace the main person in this video with the person shown in @Image 1 and @Image 2: the same face, the same "
+    "hairstyle, the same glasses or accessories, the same outfit and the same build. Keep everything else exactly as it "
+    "is in the video: their movements and timing, the camera movement, the background and the lighting. Change nothing else."))
+FACE_SWAP_MODEL = os.getenv("FACE_SWAP_MODEL", "wavespeed-ai/video-face-swap")
 MOCK_WAN_DELAY_S = float(os.getenv("MOCK_WAN_DELAY_S", "3"))
 MOCK_WAN_FAIL_ONCE = {c.strip().upper() for c in os.getenv("MOCK_WAN_FAIL_ONCE", "").split(",") if c.strip()}
 
@@ -41,6 +54,7 @@ BLUR_THRESHOLD = float(os.getenv("BLUR_THRESHOLD", "40"))
 MIN_PHOTO_SIDE = _int("MIN_PHOTO_SIDE", 480)
 MAX_UPLOAD_MB = _int("MAX_UPLOAD_MB", 15)
 REQUIRE_FACE = _bool("REQUIRE_FACE", True)
+MAX_FACE_RATIO = float(os.getenv("MAX_FACE_RATIO", "0.16"))  # face height / photo height; above = not full length
 
 DATA_DIR = Path(os.getenv("DATA_DIR", str(ROOT / "data"))).resolve()
 ASSETS_DIR = Path(os.getenv("ASSETS_DIR", str(ROOT / "assets"))).resolve()

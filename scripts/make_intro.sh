@@ -1,21 +1,19 @@
 #!/bin/bash
-# Build assets/intro.mp4 (3.0 s, 720x1280, 30 fps, no audio) from the Expo footage in raw/expo/.
-# Cuts: stadium crowd (0.9 s) -> "LOVEWORLD EXPO" ring sign over the stage (0.9 s) -> title card frozen (1.2 s).
-# The crowd clip is a split-screen TikTok: its bottom half is placed over a blurred copy of itself.
+# Build assets/intro.mp4 (4.4 s, 720x1280, 24 fps, no audio):
+#   gold-glitter "LOVEWORLD EXPO 2026" title (3.0 s, scripts/make_title.py) ~ dissolve ~ the TSION / LOVEWORLD EXPO
+#   ring, restored from the real footage with a slow push-in (1.8 s).
+# raw/expo/intro_ring_clean.mp4 is the restored ring shot; raw/expo/intro_title_glitter.mp4 is make_title.py's output.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-CROWD=raw/expo/snaptik_7707051718483201300_v3.mp4
-HALL=raw/expo/video_2026-11-13_08-13-21.mp4
-FIT="scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=30,format=yuv420p"
+TITLE=raw/expo/intro_title_glitter.mp4
+RING=raw/expo/intro_ring_clean.mp4
+[ -f "$TITLE" ] || { .venv/bin/python scripts/make_title.py "$TITLE" 3.0; }
 ffmpeg -hide_banner -loglevel error -y \
-  -ss 29.5 -t 0.9 -i "$CROWD" \
-  -ss 15.6 -t 0.9 -i "$HALL" \
-  -ss 9.8  -t 0.1 -i "$HALL" \
+  -i "$TITLE" \
+  -ss 1.0 -t 1.8 -i "$RING" \
   -filter_complex "\
-[0:v]crop=iw:ih/2:0:ih/2,split[cr1][cr2];\
-[cr1]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,gblur=sigma=30,eq=brightness=-0.15[bg];\
-[cr2]scale=720:-2[fg];[bg][fg]overlay=0:(H-h)/2,setsar=1,fps=30,format=yuv420p,setpts=PTS-STARTPTS[a];\
-[1:v]$FIT,setpts=PTS-STARTPTS[b];[2:v]$FIT,trim=end_frame=1,tpad=stop_mode=clone:stop_duration=1.2,setpts=PTS-STARTPTS[c];\
-[a][b][c]concat=n=3:v=1:a=0[v]" \
-  -map "[v]" -an -c:v libx264 -preset slow -crf 16 -pix_fmt yuv420p -t 3 assets/intro.mp4
+[0:v]setsar=1,fps=24,format=yuv420p,settb=1/24[a];\
+[1:v]scale=720:1280:force_original_aspect_ratio=increase:flags=lanczos,crop=720:1280,setsar=1,fps=24,format=yuv420p,setpts=PTS-STARTPTS,settb=1/24[b];\
+[a][b]xfade=transition=fade:duration=0.4:offset=2.6[v]" \
+  -map "[v]" -an -c:v libx264 -preset slow -crf 16 -pix_fmt yuv420p -t 4.4 assets/intro.mp4
 echo "wrote assets/intro.mp4"

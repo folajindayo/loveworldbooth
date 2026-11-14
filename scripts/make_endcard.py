@@ -1,4 +1,4 @@
-"""Build assets/endcard.mp4 (3 s, 720x1280, 30 fps, no audio): the logo over the blurred Expo hall,
+"""Build assets/endcard.mp4 (3 s, 720x1280, 24 fps, no audio): the logo over the blurred Expo hall,
 a slow push-in, and a fade to black under the music fade-out.
 
 Usage: .venv/bin/python scripts/make_endcard.py
@@ -30,7 +30,7 @@ bg.convert("RGB").save(frame)
 
 subprocess.run([
     "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(frame),
-    "-vf", f"zoompan=z='1+0.05*on/89':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=90:s={W}x{H}:fps=30,"
+    "-vf", f"zoompan=z='1+0.05*on/71':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=72:s={W}x{H}:fps=24,"
            "fade=t=in:st=0:d=0.3,fade=t=out:st=2.4:d=0.6,setsar=1,format=yuv420p",
     "-an", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-t", "3", str(ROOT / "assets/endcard.mp4"),
 ], check=True)

@@ -180,23 +180,26 @@ def cmd_pick(args) -> None:
         shutil.copyfile(src, approved_still(args.template, args.clip))
         print(f"approved {src.name} as {args.template} {args.clip}")
         return
-    matches = sorted((GEN / "videos").glob(f"{args.template}_{args.clip}_*_{args.index}.mp4"))
+    model = getattr(args, "model", None) or "*"
+    matches = sorted((GEN / "videos").glob(f"{args.template}_{args.clip}_{model}_{args.index}.mp4"))
     if len(matches) != 1:
         sys.exit(f"Expected one video for index {args.index}, found {[m.name for m in matches]}. "
                  "Use the full number from the file name.")
     template = config.load_templates()[args.template]
-    slots = PLAN["clips"][args.clip].get("install_as", [args.clip])
+    spec_clip = PLAN["clips"][args.clip]
+    slots = spec_clip.get("install_as", [args.clip])
+    slot_s = spec_clip.get("video", {}).get("duration", 5 * len(slots)) / len(slots)   # e.g. 15 s take -> 7.5 s per slot
     for i, slot in enumerate(slots):
         dest = config.template_clip(template, slot)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        # Normalise to the template spec: 720x1280, 30 fps, exactly 5 s, H.264, no audio.
+        # Normalise to the template spec: 720x1280, 24 fps (the models' native rate: no duplicated frames), exactly 5 s, H.264, no audio.
         # A continuous take fills several slots, 5 s each, cut back to back.
         subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(matches[0]),
-                        "-vf", f"trim=start={i * 5},setpts=PTS-STARTPTS,"
-                               "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=30",
-                        "-t", "5", "-an", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
+                        "-vf", f"trim=start={i * slot_s},setpts=PTS-STARTPTS,"
+                               "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=24",
+                        "-t", str(slot_s), "-an", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
                         str(dest)], check=True)
-        print(f"installed {matches[0].name} [{i * 5}-{i * 5 + 5}s] -> {dest}")
+        print(f"installed {matches[0].name} [{i * slot_s:g}-{(i + 1) * slot_s:g}s] -> {dest}")
     shutil.copyfile(matches[0], APPROVED / f"{args.template}_{args.clip}.mp4")
 
 
@@ -236,6 +239,7 @@ def main() -> None:
     p.add_argument("template")
     p.add_argument("clip", choices=list(PLAN["clips"]))
     p.add_argument("index", type=int)
+    p.add_argument("--model", choices=list(PLAN["video_models"]), help="which model's take, when several share a number")
     sub.add_parser("status")
     args = ap.parse_args()
     if getattr(args, "template", None) and args.template not in config.load_templates():

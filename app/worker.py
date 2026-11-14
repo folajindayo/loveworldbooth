@@ -9,7 +9,9 @@ import logging
 import time
 from pathlib import Path
 
+from .composite import region_bounds
 from . import config, db
+from . import composite
 from . import ffmpeg_builder as fb
 from .wan_client import TaskResult, make_client
 
@@ -75,7 +77,8 @@ class Worker:
         if not job or job["status"] not in db.ACTIVE_JOB_STATES:
             return
         db.update_job(job_id, status="processing", error=None)
-        results = await asyncio.gather(*(self._run_clip(job, c) for c in config.CLIPS))
+        groups = fb.clip_groups(config.load_templates()[job["template_id"]])
+        results = await asyncio.gather(*(self._run_clip(job, g) for g in groups))
         if not all(results):
             if db.get_job(job_id)["status"] == "rejected":
                 return
@@ -109,14 +112,21 @@ class Worker:
         db.add_event(job_id, "ready_for_qc")
         log.info("job=%s ready_for_qc", job_id)
 
-    async def _run_clip(self, job: dict, clip: str) -> bool:
-        """Drive one clip to done. Returns True on success, False once retries are exhausted."""
+    def _mark(self, job_id: int, group: list[str], **fields) -> None:
+        """Status/error apply to every clip in the group; attempts and task id live on the leader (group[0])."""
+        for c in group:
+            db.update_clip(job_id, c, **fields)
+
+    async def _run_clip(self, job: dict, group: list[str]) -> bool:
+        """Drive one Wan job (a clip, or a continuous group of clips) to done. False once retries are exhausted."""
         job_id = job["id"]
-        dest = job_dir(job_id) / f"{clip}.mp4"
+        clip = group[0]
         while True:
-            row = db.get_clips(job_id)[clip]
-            if row["status"] == "done" and row["local_path"] and Path(row["local_path"]).exists():
+            rows = db.get_clips(job_id)
+            if all(rows[c]["status"] == "done" and rows[c]["local_path"] and Path(rows[c]["local_path"]).exists()
+                   for c in group):
                 return True
+            row = rows[clip]
             if db.get_job(job_id)["status"] == "rejected":
                 return False
             async with self.wan_slots:
@@ -126,7 +136,7 @@ class Worker:
                 elif row["attempts"] >= config.WAN_MAX_ATTEMPTS:
                     return False
                 else:
-                    task_id = await self._submit(job, clip, row["attempts"] + 1)
+                    task_id = await self._submit(job, group, row["attempts"] + 1)
                 if task_id:
                     result = await self._wait(job_id, clip, task_id)
                 else:
@@ -136,42 +146,54 @@ class Worker:
             if result.status == "completed":
                 try:
                     db.update_clip(job_id, clip, output_url=result.outputs[0])
-                    raw = dest.with_name(f"{clip}.wan.mp4")
+                    raw = job_dir(job_id) / f"{''.join(group)}.wan.mp4"
                     await self.client.download(result.outputs[0], raw)
                     await fb.probe(raw)
-                    await self._finish_clip(job, clip, raw, dest)
-                    await fb.probe(dest)
-                    db.update_clip(job_id, clip, status="done", local_path=str(dest), error=None)
-                    db.add_event(job_id, "wan_done", clip)
-                    log.info("job=%s clip=%s done", job_id, clip)
+                    raw = await self._face_pass(job, group, raw)
+                    for c, dest in (await self._finish_group(job, group, raw)).items():
+                        await fb.probe(dest)
+                        db.update_clip(job_id, c, status="done", local_path=str(dest), error=None)
+                    db.add_event(job_id, "wan_done", "".join(group))
+                    log.info("job=%s clip(s)=%s done", job_id, "".join(group))
                     return True
                 except Exception as e:
                     result = TaskResult("failed", error=f"download/validate failed: {e}")
             attempts = db.get_clips(job_id)[clip]["attempts"]
-            db.update_clip(job_id, clip, status="failed", provider_task_id=None, error=result.error)
-            db.add_event(job_id, "wan_fail", f"{clip} attempt {attempts}: {result.error}")
-            log.warning("job=%s clip=%s attempt %s failed: %s", job_id, clip, attempts, result.error)
+            db.update_clip(job_id, clip, provider_task_id=None)
+            self._mark(job_id, group, status="failed", error=result.error)
+            db.add_event(job_id, "wan_fail", f"{''.join(group)} attempt {attempts}: {result.error}")
+            log.warning("job=%s clip(s)=%s attempt %s failed: %s", job_id, "".join(group), attempts, result.error)
             if attempts >= config.WAN_MAX_ATTEMPTS:
                 return False
-            db.update_clip(job_id, clip, status="pending")  # loop around for the automatic retry
+            self._mark(job_id, group, status="pending")  # loop around for the automatic retry
 
-    async def _submit(self, job: dict, clip: str, attempt: int) -> str | None:
+    async def _submit(self, job: dict, group: list[str], attempt: int) -> str | None:
         job_id = job["id"]
+        clip = group[0]
         template = config.load_templates()[job["template_id"]]
         try:
             image_url = await self._upload(Path(job["photo_path"]))
-            video_url = await self._upload(await self._swap_input(template, clip))
-            db.update_clip(job_id, clip, status="running", attempts=attempt, provider_task_id=None, error=None)
-            task_id = await self.client.submit(image_url, video_url)
+            video_url = await self._upload(await self._swap_input(template, group))
+            db.update_clip(job_id, clip, attempts=attempt, provider_task_id=None)
+            self._mark(job_id, group, status="running", error=None)
+            if config.SWAP_ENGINE == "seedance" and not config.MOCK_WAN:
+                face = job_dir(job_id) / "face.jpg"
+                refs = [image_url] + ([await self._upload(face)] if face.exists() else [])
+                task_id = await self.client.submit_model(config.SEEDANCE_EDIT_MODEL, {
+                    "prompt": config.SEEDANCE_EDIT_PROMPT, "video": video_url, "reference_images": refs,
+                    "resolution": "720p", "generate_audio": False})
+            else:
+                task_id = await self.client.submit(image_url, video_url)
         except Exception as e:
             # Submits are not retried blindly here: an ambiguous failure may still have created a task.
             # It counts as an attempt; the one automatic retry then covers it.
-            db.update_clip(job_id, clip, status="failed", attempts=attempt, error=f"submit failed: {e}")
-            log.warning("job=%s clip=%s submit failed: %s", job_id, clip, e)
+            db.update_clip(job_id, clip, attempts=attempt)
+            self._mark(job_id, group, status="failed", error=f"submit failed: {e}")
+            log.warning("job=%s clip(s)=%s submit failed: %s", job_id, "".join(group), e)
             return None
         db.update_clip(job_id, clip, provider_task_id=task_id)
-        db.add_event(job_id, "wan_submit", f"{clip} attempt {attempt} task {task_id}")
-        log.info("job=%s clip=%s submitted task %s (attempt %s)", job_id, clip, task_id, attempt)
+        db.add_event(job_id, "wan_submit", f"{''.join(group)} attempt {attempt} task {task_id}")
+        log.info("job=%s clip(s)=%s submitted task %s (attempt %s)", job_id, "".join(group), task_id, attempt)
         return task_id
 
     async def _wait(self, job_id: int, clip: str, task_id: str) -> TaskResult:
@@ -186,7 +208,7 @@ class Worker:
                 errors = 0
             except Exception as e:  # transport hiccups: keep polling, give up after many in a row
                 errors += 1
-                log.warning("job=%s clip=%s poll error %s/%s: %s", job_id, clip, errors, MAX_POLL_ERRORS, e)
+                log.warning("job=%s clip=%s poll error %s/%s: %r", job_id, clip, errors, MAX_POLL_ERRORS, e)
                 if errors >= MAX_POLL_ERRORS:
                     return TaskResult("failed", error=f"polling kept failing: {e}")
                 await asyncio.sleep(min(30, poll_s * 2))
@@ -197,36 +219,96 @@ class Worker:
             await asyncio.sleep(poll_s)
         return TaskResult("failed", error=f"timed out after {config.WAN_TIMEOUT_S}s")
 
-    async def _swap_input(self, template: dict, clip: str) -> Path:
-        """The clip Wan sees: the template itself, or (for clips with a swap region) only the stand-in's region."""
-        src = config.template_clip(template, clip)
-        region = fb.swap_region(template, clip)
-        if not region:
-            return src
-        key = f"{template['id']}_{region['x']}_{region['width']}_{src.stat().st_mtime_ns}"
-        out = config.DATA_DIR / "swap_inputs" / key / f"{clip}.mp4"   # file keeps the clip's name
+    async def _face_pass(self, job: dict, group: list[str], raw: Path) -> Path:
+        """Optional face-identity pass on Wan's output. It sees the same one-person strip Wan saw, so the
+        "largest face" it replaces is always the visitor's. Any failure falls back to Wan's output: never fail
+        a visitor's film over the refinement step, but log it so QC can see it."""
+        face = job_dir(job["id"]) / "face.jpg"
+        if not config.FACE_SWAP or config.MOCK_WAN or not face.exists():
+            return raw
+        # Runs after Seedance too: Seedance carries the hair, glasses and outfit, but its face is a likeness
+        # (generic grin, lost moustache on the test photo); this pass sets the exact face from the photo.
+        label = "".join(group)
+        try:
+            async with self.wan_slots:
+                body = {"video": await self.client.upload(raw), "face_image": await self.client.upload(face),
+                        "target_index": 0, "target_gender": "all"}
+                task_id = await self.client.submit_model(config.FACE_SWAP_MODEL, body)
+                db.add_event(job["id"], "face_submit", f"{label} task {task_id}")
+                result = await self._wait(job["id"], group[0], task_id)
+            if result.status != "completed":
+                raise RuntimeError(result.error or result.status)
+            out = raw.with_name(f"{label}.face.mp4")
+            await self.client.download(result.outputs[0], out)
+            await fb.probe(out)
+            db.add_event(job["id"], "face_done", label)
+            return out
+        except Exception as e:
+            log.warning("job=%s clip(s)=%s face pass failed, using Wan output: %s", job["id"], label, e)
+            db.add_event(job["id"], "face_fail", f"{label}: {e}")
+            return raw
+
+    async def _cached(self, out: Path, cmd_for) -> Path:
+        """Build a derived template file once (shared by every job), atomically."""
         if not out.exists():
             out.parent.mkdir(parents=True, exist_ok=True)
             tmp = out.with_suffix(".tmp.mp4")
             async with self.ffmpeg_slots:
-                await fb.run(fb.swap_input_cmd(src, region, tmp))
+                await fb.run(cmd_for(tmp))
             tmp.replace(out)
         return out
 
-    async def _finish_clip(self, job: dict, clip: str, raw: Path, dest: Path) -> None:
-        """Wan output -> the clip used in the stitch (blended back into the template if it has a swap region)."""
-        template = config.load_templates()[job["template_id"]]
-        region = fb.swap_region(template, clip)
+    async def _group_source(self, template: dict, group: list[str]) -> Path:
+        """The template footage for a group: the clip itself, or a continuous group's clips joined end to end."""
+        srcs = [config.template_clip(template, c) for c in group]
+        if len(srcs) == 1:
+            return srcs[0]
+        key = f"{template['id']}_{'_'.join(str(p.stat().st_mtime_ns) for p in srcs)}"
+        return await self._cached(config.DATA_DIR / "swap_inputs" / f"joined_{key}" / f"{group[0]}.mp4",
+                                  lambda tmp: fb.concat_cmd(srcs, tmp))
+
+    async def _swap_input(self, template: dict, group: list[str]) -> Path:
+        """What Wan sees: the group's footage, cropped to the stand-in's region if it has one (file named after the
+        group's first clip)."""
+        src = await self._group_source(template, group)
+        region = fb.swap_region(template, group[0])
         if not region:
-            raw.replace(dest)
-            return
-        mask = config.DATA_DIR / "swap_inputs" / f"mask_{region['x']}_{region['width']}_{region.get('feather', 40)}.png"
-        if not mask.exists():
-            fb.region_mask(region, mask)
-        tmp = dest.with_suffix(".tmp.mp4")
-        async with self.ffmpeg_slots:
-            await fb.run(fb.composite_cmd(config.template_clip(template, clip), raw, mask, tmp), job["id"])
-        tmp.replace(dest)
+            return src
+        rx, rw = region_bounds(region)
+        key = f"{template['id']}_{''.join(group)}_{rx}_{rw}_{src.stat().st_mtime_ns}"
+        return await self._cached(config.DATA_DIR / "swap_inputs" / key / f"{group[0]}.mp4",
+                                  lambda tmp: fb.swap_input_cmd(src, region, tmp))
+
+    async def _finish_group(self, job: dict, group: list[str], raw: Path) -> dict[str, Path]:
+        """Wan output -> one file per clip: blended back into the template (swap region), then split if continuous."""
+        template = config.load_templates()[job["template_id"]]
+        region = fb.swap_region(template, group[0])
+        jd = job_dir(job["id"])
+        joined = jd / f"{''.join(group)}.joined.mp4"
+        if region:
+            # Take only the pixels Wan changed (the visitor) and keep everything else from the template.
+            src = await self._group_source(template, group)
+            timed = jd / f"{''.join(group)}.timed.mp4"     # swap output on the template's clock (see retime_cmd)
+            want, got = (await fb.probe(src))["duration"], (await fb.probe(raw))["duration"]
+            async with self.ffmpeg_slots:
+                await fb.run(fb.retime_cmd(raw, got, want, timed), job["id"])
+                n = await asyncio.to_thread(composite.silhouette_composite, src, timed, region, joined, fb.FPS)
+            log.info("job=%s clip(s)=%s silhouette composite: %s frames", job["id"], "".join(group), n)
+        else:
+            raw.replace(joined)
+        if len(group) == 1:
+            dest = jd / f"{group[0]}.mp4"
+            joined.replace(dest)
+            return {group[0]: dest}
+        out, start = {}, 0.0
+        for c in group:
+            dest = jd / f"{c}.mp4"
+            secs = fb.clip_seconds(template, c)
+            async with self.ffmpeg_slots:
+                await fb.run(fb.split_cmd(joined, start, secs, dest), job["id"])
+            out[c] = dest
+            start += secs
+        return out
 
     async def _upload(self, path: Path) -> str:
         """Upload once and reuse the URL (template clips are shared by every job)."""
